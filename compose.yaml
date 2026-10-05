@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    container_name: flagrantwaffle-app
+
+    env_file:
+      - .env
+
+    ports:
+      - "8000:8000"
