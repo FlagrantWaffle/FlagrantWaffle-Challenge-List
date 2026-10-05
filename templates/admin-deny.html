@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}
+Deny Submission - FlagrantWaffle
+{% endblock %}
+
+{% block content %}
+
+<main class="login-page">
+
+    <section class="login-card">
+
+        <p class="eyebrow">
+            Administration
+        </p>
+
+        <h1>
+            Deny Submission
+        </h1>
+
+        <p class="login-subtitle">
+            Review the submission details before denying it.
+        </p>
+
+
+        <div class="level-stat-list">
+
+            <div class="level-stat">
+
+                <span class="level-stat-label">
+                    User
+                </span>
+
+                <span class="level-stat-value">
+                    {{ submission.username }}
+                </span>
+
+            </div>
+
+
+            <div class="level-stat">
+
+                <span class="level-stat-label">
+                    Level
+                </span>
+
+                <span class="level-stat-value">
+                    {{ submission.level_name }}
+                </span>
+
+            </div>
+
+
+            <div class="level-stat">
+
+                <span class="level-stat-label">
+                    Submitted
+                </span>
+
+                <span class="level-stat-value">
+                    {{ submission.submitted_at.strftime("%d %b %Y") }}
+                </span>
+
+            </div>
+
+
+            <div class="level-stat">
+
+                <span class="level-stat-label">
+                    Proof
+                </span>
+
+                <span class="level-stat-value">
+
+                    <a
+                        href="{{ submission.proof_url }}"
+                        target="_blank"
+                        class="proof-link"
+                    >
+                        View Proof
+                    </a>
+
+                </span>
+
+            </div>
+
+        </div>
+
+        <form
+            method="post"
+            action="/admin/submissions/{{ submission.id }}/deny"
+        >
+
+            <label for="moderator_comment">
+                Denial Reason
+            </label>
+
+            <textarea
+                id="moderator_comment"
+                name="moderator_comment"
+                rows="4"
+                placeholder="Enter a moderator comment..."
+                required
+            ></textarea>
+
+            <button type="submit">
+                Confirm Denial
+            </button>
+
+        </form>
+
+        <p class="auth-switch">
+
+            <a href="/admin/submissions">
+                Cancel and return to submissions
+            </a>
+
+        </p>
+
+    </section>
+
+</main>
+
+{% endblock %}

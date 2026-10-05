@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ level.name }} - FlagrantWaffle
+{% endblock %}
+
+{% block content %}
+
+
+{% if flash_message %}
+
+<div class="toast-message" id="toast-message">
+
+    <span>
+        {{ flash_message }}
+    </span>
+
+    <button
+        type="button"
+        class="toast-close"
+        id="toast-close"
+        aria-label="Close notification"
+    >
+        &times;
+    </button>
+
+</div>
+
+{% endif %}
+
+
+<main class="level-page">
+
+    <section class="level-hero">
+
+        <p class="level-rank">
+            Rank #{{ level.rank }}
+        </p>
+
+        <h1 class="level-title">
+            {{ level.name }}
+        </h1>
+
+        <p class="level-creator">
+            by {{ level.creator }}
+        </p>
+
+    </section>
+
+
+    <section class="level-grid">
+
+        <div class="level-card level-video-card">
+
+            {% if level.embed_url %}
+
+            <div class="level-video-wrapper">
+
+                <iframe
+                    src="{{ level.embed_url }}"
+                    title="{{ level.name }} verification"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allowfullscreen>
+                </iframe>
+
+            </div>
+
+            {% endif %}
+
+
+            <div class="level-video-footer">
+
+                <span>
+                    Verification
+                </span>
+
+                {% if level.verification_url %}
+
+                <a
+                    href="{{ level.verification_url }}"
+                    target="_blank"
+                >
+                    Watch on YouTube
+                </a>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+
+        <aside class="level-card level-info-card">
+
+            <h2>
+                Level Info
+            </h2>
+
+
+            <div class="level-stat-list">
+
+                <div class="level-stat">
+
+                    <span class="level-stat-label">
+                        Rank
+                    </span>
+
+                    <span class="level-stat-value">
+                        #{{ level.rank }}
+                    </span>
+
+                </div>
+
+
+                <div class="level-stat">
+
+                    <span class="level-stat-label">
+                        Creator
+                    </span>
+
+                    <span class="level-stat-value">
+                        {{ level.creator }}
+                    </span>
+
+                </div>
+
+
+                <div class="level-stat">
+
+                    <span class="level-stat-label">
+                        Geometry Dash ID
+                    </span>
+
+                    <span class="level-stat-value">
+                        {{ level.gd_id }}
+                    </span>
+
+                </div>
+
+
+                <div class="level-stat">
+
+                    <span class="level-stat-label">
+                        Waffle Points
+                    </span>
+
+                    <span class="level-stat-value level-points">
+                        {{ level.points }} WP
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="level-actions">
+
+                {% if current_user %}
+
+                    {% if user_completion %}
+
+                        <button
+                            type="button"
+                            class="complete-button"
+                            id="complete-button"
+                        >
+                            Complete &#10004;
+                        </button>
+
+                    {% elif pending_submission %}
+
+                        <button
+                            type="button"
+                            class="pending-button"
+                            disabled
+                        >
+                            Pending Review
+                        </button>
+
+                    {% else %}
+
+                        <button
+                            type="button"
+                            class="primary-button submit-modal-trigger"
+                            id="open-submit-modal"
+                        >
+                            Submit Completion
+                        </button>
+
+                    {% endif %}
+
+                {% else %}
+
+                    <a
+                        href="/login"
+                        class="primary-button"
+                    >
+                        Login to Submit
+                    </a>
+
+                {% endif %}
+
+            </div>
+
+        </aside>
+
+    </section>
+
+
+    <section class="level-card victors-card">
+
+        <h2>
+            Victors
+        </h2>
+
+        <p class="empty-state">
+            {{ victors|length }} verified completion{% if victors|length != 1 %}s{% endif %}
+        </p>
+
+
+        {% if victors %}
+
+        <div class="table-wrapper">
+
+            <table class="levels-table">
+
+                <thead>
+
+                    <tr>
+                        <th class="rank-column">#</th>
+                        <th>User</th>
+                        <th>Completed</th>
+                        <th>Proof</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for victor in victors %}
+
+                    <tr>
+
+                        <td class="rank-cell">
+                            #{{ loop.index }}
+                        </td>
+
+
+                        <td class="level-name-cell">
+
+                            <a href="/users/{{ victor.username }}">
+                                {{ victor.username }}
+                            </a>
+
+                        </td>
+
+
+                        <td class="muted-cell">
+                            {{ victor.completed_at.strftime("%d %b %Y") }}
+                        </td>
+
+
+                        <td>
+
+                            <a
+                                href="{{ victor.proof_url }}"
+                                target="_blank"
+                                class="proof-link"
+                            >
+                                View Proof
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="profile-empty">
+            No verified completions yet.
+        </div>
+
+        {% endif %}
+
+    </section>
+
+</main>
+
+
+{% if current_user %}
+
+<div
+    class="modal-backdrop"
+    id="submit-modal"
+>
+
+    <div class="submit-modal">
+
+        <div class="submit-modal-header">
+
+            <div>
+
+                <p class="eyebrow">
+                    Completion Submission
+                </p>
+
+                <h2>
+                    {{ level.name }}
+                </h2>
+
+            </div>
+
+
+            <button
+                type="button"
+                class="modal-close"
+                id="close-submit-modal"
+                aria-label="Close submission form"
+            >
+                &times;
+            </button>
+
+        </div>
+
+
+        <p class="submit-modal-description">
+            Paste the URL containing proof of your completion.
+        </p>
+
+
+        <form
+            method="post"
+            action="/levels/{{ level.id }}/submit"
+            class="submit-form"
+        >
+
+            <label for="proof_url">
+                Proof URL
+            </label>
+
+            <input
+                type="url"
+                id="proof_url"
+                name="proof_url"
+                placeholder="https://www.youtube.com/watch?v=..."
+                required
+            >
+
+
+            <div class="submit-modal-actions">
+
+                <button
+                    type="button"
+                    class="secondary-button"
+                    id="cancel-submit-modal"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                >
+                    Send Submission
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+
+<script>
+
+    const modal =
+        document.getElementById("submit-modal");
+
+    const openButton =
+        document.getElementById("open-submit-modal");
+
+    const closeButton =
+        document.getElementById("close-submit-modal");
+
+    const cancelButton =
+        document.getElementById("cancel-submit-modal");
+
+
+    if (modal && openButton) {
+
+        function openModal() {
+            modal.classList.add("visible");
+        }
+
+
+        function closeModal() {
+            modal.classList.remove("visible");
+        }
+
+
+        openButton.addEventListener(
+            "click",
+            openModal
+        );
+
+
+        closeButton.addEventListener(
+            "click",
+            closeModal
+        );
+
+
+        cancelButton.addEventListener(
+            "click",
+            closeModal
+        );
+
+
+        modal.addEventListener(
+            "click",
+            function(event) {
+
+                if (event.target === modal) {
+                    closeModal();
+                }
+
+            }
+        );
+
+
+        document.addEventListener(
+            "keydown",
+            function(event) {
+
+                if (event.key === "Escape") {
+                    closeModal();
+                }
+
+            }
+        );
+
+    }
+
+
+    const completeButton =
+        document.getElementById("complete-button");
+
+
+    if (completeButton) {
+
+        completeButton.addEventListener(
+            "click",
+            function() {
+
+                const partyHorn =
+                    new Audio("/static/audio/party-horn.mp3");
+
+                partyHorn.play();
+
+            }
+        );
+
+    }
+
+
+    const toast =
+        document.getElementById("toast-message");
+
+    const toastClose =
+        document.getElementById("toast-close");
+
+
+    if (toast) {
+
+        setTimeout(
+            function() {
+                toast.classList.add("toast-hide");
+            },
+            4000
+        );
+
+
+        if (toastClose) {
+
+            toastClose.addEventListener(
+                "click",
+                function() {
+                    toast.classList.add("toast-hide");
+                }
+            );
+
+        }
+
+    }
+
+</script>
+
+
+{% endblock %}

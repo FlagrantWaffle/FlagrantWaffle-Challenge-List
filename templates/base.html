@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}FlagrantWaffle{% endblock %}</title>
+
+    <link rel="stylesheet" href="/static/css/styles.css?v=4">
+</head>
+
+<body>
+
+    <header class="site-header">
+
+        <div class="site-brand">
+            <div class="brand-mark">
+                <img src="/static/images/waffle_icon.png" alt="FlagrantWaffle logo">
+            </div>
+
+            <div>
+                <div class="brand-name">FlagrantWaffle</div>
+                <div class="brand-subtitle">Challenge List</div>
+            </div>
+        </div>
+
+<nav class="site-nav">
+
+    {% if current_user and current_user.is_admin %}
+        <a href="/admin">Admin</a>
+    {% endif %}
+
+    <a href="/levels">Levels</a>
+
+    <a href="/leaderboard">Leaderboard</a>
+
+    {% if current_user %}
+        <a href="/users/{{ current_user.username }}">
+            {{ current_user.username }}
+        </a>
+
+        <a href="/logout">
+            Logout
+        </a>
+    {% else %}
+        <a href="/login">
+            Login
+        </a>
+
+        <a href="/register">
+            Register
+        </a>
+    {% endif %}
+
+</nav>
+
+    </header>
+
+    {% block content %}
+    {% endblock %}
+
+</body>
+</html>

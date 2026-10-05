@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}
+Waffle Challenge Levels
+{% endblock %}
+
+{% block content %}
+
+<main class="page-container">
+
+    <section class="page-heading">
+        <p class="eyebrow">Geometry Dash</p>
+
+        <h1>Waffle Challenge Levels</h1>
+
+        <p class="page-description">
+            Community challenge levels ranked by difficulty.
+            Beat levels, submit completions and earn Waffle Points.
+        </p>
+    </section>
+
+    <section class="levels-card">
+
+        <div class="levels-card-header">
+            <div>
+                <h2>Ranked Levels</h2>
+                <p>{{ levels|length }} levels currently listed</p>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="levels-table">
+
+                <thead>
+                    <tr>
+                        <th class="rank-column">Rank</th>
+                        <th>Level</th>
+                        <th>Creator</th>
+                        <th>Geometry Dash ID</th>
+                        <th>Waffle Points</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for level in levels %}
+                    <tr class="{% if level.completed %}completed-row{% endif %}">
+                        <td class="rank-cell">
+                            #{{ level.rank }}
+                        </td>
+
+                        <td class="level-name-cell">
+                            <a href="/levels/{{ level.id }}">
+                                {{ level.name }}
+                            </a>
+                        </td>
+
+                        <td>
+                            {{ level.creator }}
+                        </td>
+
+                        <td class="muted-cell">
+                            {{ level.gd_id }}
+                        </td>
+
+                        <td>
+                            <span class="points-badge">
+                                {{ level.points }} WP
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+
+    </section>
+
+</main>
+
+{% endblock %}

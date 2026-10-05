@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}
+Login - FlagrantWaffle
+{% endblock %}
+
+{% block content %}
+
+<main class="login-page">
+
+    <section class="login-card">
+
+        <h1>Login</h1>
+
+        <p class="login-subtitle">
+            Sign in to submit completions and track your Waffle Points.
+        </p>
+
+        {% if error %}
+            <div class="error-message">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form method="post" action="/login">
+
+            <label for="username">Username</label>
+
+            <input
+                type="text"
+                id="username"
+                name="username"
+                required
+            >
+
+            <label for="password">Password</label>
+
+            <input
+                type="password"
+                id="password"
+                name="password"
+                required
+            >
+
+            <button type="submit">
+                Login
+            </button>
+
+        </form>
+
+        <p class="auth-switch">
+            Don't have an account?
+            <a href="/register">Register</a>
+        </p>
+
+    </section>
+
+</main>
+
+{% endblock %}

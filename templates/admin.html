@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}
+Admin Dashboard - FlagrantWaffle
+{% endblock %}
+
+{% block content %}
+
+<main class="page-container">
+
+    <section class="admin-header">
+
+        <div>
+
+            <p class="eyebrow">
+                Administration
+            </p>
+
+            <h1 class="profile-username">
+                Admin Dashboard
+            </h1>
+
+        </div>
+
+
+        <div class="admin-actions">
+
+            <a
+                href="/admin/submissions"
+                class="primary-button"
+            >
+                Review Submissions
+            </a>
+
+        </div>
+
+    </section>
+
+
+    <section class="levels-card">
+
+        <div class="levels-card-header">
+
+            <div>
+
+                <h2>
+                    Site Administrators
+                </h2>
+
+                <p>
+                    {{ site_admin|length }} admins
+                </p>
+
+            </div>
+
+        </div>
+
+
+        {% if site_admin %}
+
+        <div class="table-wrapper">
+
+            <table class="levels-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Admin</th>
+                        <th>Levels Reviewed</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for admin in site_admin %}
+
+                    <tr>
+
+                        <td class="level-name-cell">
+
+                            <a href="/users/{{ admin.username }}">
+                                {{ admin.username }}
+                            </a>
+
+                        </td>
+
+
+                        <td>
+
+                            <span class="points-badge">
+                                {{ admin.levels_reviewed }}
+                            </span>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="profile-empty">
+            No administrators found.
+        </div>
+
+        {% endif %}
+
+    </section>
+
+    
+    <section class="levels-card review-history-card">
+
+        <div class="levels-card-header">
+
+            <div>
+
+                <h2>
+                    Review History
+                </h2>
+
+                <p>
+                    {{ review_history|length }} Reviews
+                </p>
+
+            </div>
+
+        </div>
+
+    
+
+        <div class="table-wrapper">
+
+            <table class="levels-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Submitter Username</th>
+                        <th>Level Name</th>
+                        <th>Reviewer Username</th>
+                        <th>Moderator Comment</th>
+                        <th>Status</th>
+                        <th>Reviewed At</th>
+                        <th>Proof URL</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for review in review_history %}
+
+                    <tr>
+
+                        <td class="level-name-cell">
+                            <a href="/users/{{ review.submitter_username }}">
+                                {{ review.submitter_username }}
+                            </a>
+                        </td>
+
+
+                        <td class="level-name-cell">
+                            <a href="/levels/{{ review.level_id }}">
+                                {{ review.level_name }}
+                            </a>
+                        </td>
+
+
+                        <td class="level-name-cell">
+                            <a href="/users/{{ review.reviewer_username }}">
+                                {{ review.reviewer_username }}
+                            </a>
+                        </td>
+
+
+                        <td class="muted-cell">
+                            {{ review.moderator_comment }}
+                        </td>
+
+
+                        <td>
+                            {{ review.status|capitalize }}
+                        </td>
+
+
+                        <td class="muted-cell">
+                            {{ review.reviewed_at.strftime("%d %b %Y") }}
+                        </td>
+
+
+                        <td>
+                            <a
+                                href="{{ review.proof_url }}"
+                                target="_blank"
+                                class="proof-link"
+                            >
+                                View Proof
+                            </a>
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+    </section>
+
+
+    <div class="pagination">
+
+        {% if history_page > 1 %}
+
+        <a
+            href="/admin?history_page={{ history_page - 1 }}"
+            class="secondary-button"
+        >
+            ← Previous
+        </a>
+
+        {% endif %}
+
+
+        <span class="pagination-info">
+            Page {{ history_page }} of {{ total_pages }}
+        </span>
+
+
+        {% if history_page < total_pages %}
+
+        <a
+            href="/admin?history_page={{ history_page + 1 }}"
+            class="secondary-button"
+        >
+            Next →
+        </a>
+
+        {% endif %}
+
+    </div>
+
+
+</main>
+
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}
+Challenge Submissions - FlagrantWaffle
+{% endblock %}
+
+{% block content %}
+
+<main class="page-container">
+
+    <section class="profile-header">
+
+        <p class="eyebrow">
+            Administration
+        </p>
+
+        <h1 class="profile-username">
+            Challenge Submissions
+        </h1>
+
+    
+        <div class="admin-back">
+            <a
+                href="/admin"
+                class="primary-button"
+            >
+                ← Admin Dashboard
+            </a>
+        </div>
+
+
+
+        <div class="profile-stats">
+
+            <div class="profile-stat">
+
+                <span class="profile-stat-value">
+                    {{ submissions|length }}
+                </span>
+
+                <span class="profile-stat-label">
+                    Pending Review
+                </span>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section class="levels-card">
+
+        <div class="levels-card-header">
+
+            <div>
+
+                <h2>
+                    Pending Submissions
+                </h2>
+
+                <p>
+                    {{ submissions|length }} submissions pending review
+                </p>
+
+            </div>
+
+        </div>
+
+
+        {% if submissions %}
+
+        <div class="table-wrapper">
+
+            <table class="levels-table">
+
+                <thead>
+
+                    <tr>
+                        <th class="rank-column">Rank</th>
+                        <th>User</th>
+                        <th>Level</th>
+                        <th>Level ID</th>
+                        <th>Submitted</th>
+                        <th>Proof</th>
+                        <th>Actions</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for submission in submissions %}
+
+                    <tr>
+
+                        <td class="rank-cell">
+                            #{{ submission.rank }}
+                        </td>
+
+
+                        <td>
+                            <a
+                                href="/users/{{ submission.username }}"
+                                class="proof-link"
+                            >
+                                {{ submission.username }}
+                            </a>
+                        </td>
+
+
+                        <td class="level-name-cell">
+
+                            <a href="/levels/{{ submission.level_id }}">
+                                {{ submission.level_name }}
+                            </a>
+
+                        </td>
+
+
+                        <td class="muted-cell">
+                            {{ submission.level_id }}
+                        </td>
+
+
+                        <td class="muted-cell">
+                            {{ submission.submitted_at.strftime("%d %b %Y") }}
+                        </td>
+
+
+                        <td>
+
+                            <a
+                                href="{{ submission.proof_url }}"
+                                target="_blank"
+                                class="proof-link"
+                            >
+                                View Proof
+                            </a>
+
+                        </td>
+
+
+                        <td>
+
+                            <a
+                                href="/admin/submissions/{{ submission.id }}/approve"
+                                class="primary-button"
+                            >
+                                Approve
+                            </a>
+
+                            <a
+                                href="/admin/submissions/{{ submission.id }}/deny"
+                                class="primary-button"
+                            >
+                                Deny
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="profile-empty">
+            No submissions are currently awaiting review.
+        </div>
+
+        {% endif %}
+
+    </section>
+
+</main>
+
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}
+Waffle Leaderboard
+{% endblock %}
+
+{% block content %}
+
+<main class="page-container">
+
+    <section class="page-heading">
+        <p class="eyebrow">Community Rankings</p>
+
+        <h1>Waffle Leaderboard</h1>
+
+        <p class="page-description">
+            Players ranked by the total Waffle Points earned from verified challenge completions.
+        </p>
+    </section>
+
+    <section class="levels-card">
+
+        <div class="levels-card-header">
+            <div>
+                <h2>Player Rankings</h2>
+                <p>{{ leaderboard|length }} players ranked</p>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="levels-table">
+
+                <thead>
+                    <tr>
+                        <th class="rank-column">Rank</th>
+                        <th>Player</th>
+                        <th>Waffle Points</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for user in leaderboard %}
+                    <tr>
+
+                        <td class="rank-cell">
+                            #{{ loop.index }}
+                        </td>
+
+                        <td class="leaderboard-user">
+                            {{ user.username }}
+                        </td>
+
+                        <td>
+                            <span class="points-badge">
+                                {{ user.waffle_points }} WP
+                            </span>
+                        </td>
+
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+        </div>
+
+    </section>
+
+</main>
+
+{% endblock %}

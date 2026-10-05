@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ user_info.username }} - FlagrantWaffle
+{% endblock %}
+
+{% block content %}
+
+<main class="page-container">
+
+    <section class="profile-section">
+
+        <div class="profile-header">
+
+            <div class="profile-header-text">
+                <div class="profile-eyebrow">
+                    WAFFLE CHALLENGER
+                </div>
+
+                <h1 class="profile-username">
+                    {{ user_info.username }}
+                </h1>
+            </div>
+
+            {% if user_info.discord_id and user_info.discord_avatar_hash %}
+
+                <img
+                    class="profile-avatar"
+                    src="https://cdn.discordapp.com/avatars/{{ user_info.discord_id }}/{{ user_info.discord_avatar_hash }}.png?size=256"
+                    alt="{{ user_info.username }}'s profile picture"
+                >
+
+            {% endif %}
+
+        </div>
+
+
+        <div class="profile-stats">
+
+            <div class="profile-stat">
+
+                <span class="profile-stat-value">
+                    {{ waffle_points }}
+                </span>
+
+                <span class="profile-stat-label">
+                    Waffle Points
+                </span>
+
+            </div>
+
+
+            <div class="profile-stat">
+
+                <span class="profile-stat-value">
+                    {{ completed_levels|length }}
+                </span>
+
+                <span class="profile-stat-label">
+                    Completed Levels
+                </span>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- APPROVED COMPLETIONS -->
+
+    <section class="levels-card profile-completions">
+
+        <div class="levels-card-header">
+
+            <div>
+
+                <h2>
+                    Approved Completions
+                </h2>
+
+                <p>
+                    {{ completed_levels|length }} verified completions
+                </p>
+
+            </div>
+
+        </div>
+
+
+        {% if completed_levels %}
+
+            <div class="table-wrapper">
+
+                <table class="levels-table">
+
+                    <thead>
+
+                        <tr>
+                            <th class="rank-column">Rank</th>
+                            <th>Level</th>
+                            <th>Waffle Points</th>
+                            <th>Completed</th>
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for level in completed_levels %}
+
+                            <tr>
+
+                                <td class="rank-cell">
+                                    #{{ level.rank }}
+                                </td>
+
+
+                                <td class="level-name-cell">
+
+                                    <a href="/levels/{{ level.id }}">
+                                        {{ level.name }}
+                                    </a>
+
+                                </td>
+
+
+                                <td>
+
+                                    <span class="points-badge">
+                                        {{ level.points }} WP
+                                    </span>
+
+                                </td>
+
+
+                                <td class="muted-cell">
+                                    {{ level.completed_at.strftime("%d %b %Y") }}
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        {% else %}
+
+            <div class="profile-empty">
+                No approved completions yet.
+            </div>
+
+        {% endif %}
+
+    </section>
+
+
+
+    {% if can_view_submissions %}
+
+
+        <!-- PENDING SUBMISSIONS -->
+
+        <section class="levels-card profile-completions">
+
+            <div class="levels-card-header">
+
+                <div>
+
+                    <h2>
+                        Pending Submissions
+                    </h2>
+
+                    <p>
+                        {{ user_submissions|length }} awaiting review
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            {% if user_submissions %}
+
+                <div class="table-wrapper">
+
+                    <table class="levels-table">
+
+                        <thead>
+
+                            <tr>
+                                <th class="rank-column">Rank</th>
+                                <th>Level</th>
+                                <th>Submitted</th>
+                                <th>Status</th>
+                                <th>Proof</th>
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for submission in user_submissions %}
+
+                                <tr>
+
+                                    <td class="rank-cell">
+                                        #{{ submission.rank }}
+                                    </td>
+
+
+                                    <td class="level-name-cell">
+
+                                        <a href="/levels/{{ submission.level_id }}">
+                                            {{ submission.name }}
+                                        </a>
+
+                                    </td>
+
+
+                                    <td class="muted-cell">
+                                        {{ submission.submitted_at.strftime("%d %b %Y") }}
+                                    </td>
+
+
+                                    <td>
+
+                                        <span class="pending-badge">
+                                            Pending
+                                        </span>
+
+                                    </td>
+
+
+                                    <td>
+
+                                        <a
+                                            href="{{ submission.proof_url }}"
+                                            target="_blank"
+                                            class="proof-link"
+                                        >
+                                            View Proof
+                                        </a>
+
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            {% else %}
+
+                <div class="profile-empty">
+                    No pending submissions.
+                </div>
+
+            {% endif %}
+
+        </section>
+
+
+
+        <!-- SUBMISSION HISTORY -->
+
+        <section class="levels-card profile-completions">
+
+            <div class="levels-card-header">
+
+                <div>
+
+                    <h2>
+                        Submission History
+                    </h2>
+
+                    <p>
+                        {{ submission_history|length }} reviewed submissions
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            {% if submission_history %}
+
+                <div class="table-wrapper">
+
+                    <table class="levels-table">
+
+                        <thead>
+
+                            <tr>
+                                <th>Level</th>
+                                <th>Status</th>
+                                <th>Submitted</th>
+                                <th>Reviewed</th>
+                                <th>Moderator Comment</th>
+                                <th>Proof</th>
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for submission in submission_history %}
+
+                                <tr>
+
+                                    <td class="level-name-cell">
+
+                                        <a href="/levels/{{ submission.level_id }}">
+                                            {{ submission.level_name }}
+                                        </a>
+
+                                    </td>
+
+
+                                    <td>
+
+                                        {% if submission.status == "approved" %}
+
+                                            <span class="approved-badge">
+                                                Approved
+                                            </span>
+
+                                        {% elif submission.status == "denied" %}
+
+                                            <span class="denied-badge">
+                                                Denied
+                                            </span>
+
+                                        {% endif %}
+
+                                    </td>
+
+
+                                    <td class="muted-cell">
+                                        {{ submission.submitted_at.strftime("%d %b %Y") }}
+                                    </td>
+
+
+                                    <td class="muted-cell">
+
+                                        {% if submission.reviewed_at %}
+
+                                            {{ submission.reviewed_at.strftime("%d %b %Y") }}
+
+                                        {% else %}
+
+                                            -
+
+                                        {% endif %}
+
+                                    </td>
+
+                                    <td class="muted-cell">
+
+                                        {% if submission.moderator_comment %}
+
+                                            {{ submission.moderator_comment }}
+
+                                        {% else %}
+
+                                            -
+
+                                        {% endif %}
+
+                                    </td>
+
+
+                                    <td>
+
+                                        <a
+                                            href="{{ submission.proof_url }}"
+                                            target="_blank"
+                                            class="proof-link"
+                                        >
+                                            View Proof
+                                        </a>
+
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            {% else %}
+
+                <div class="profile-empty">
+                    No reviewed submissions yet.
+                </div>
+
+            {% endif %}
+
+        </section>
+
+
+    {% endif %}
+
+</main>
+
+{% endblock %}
