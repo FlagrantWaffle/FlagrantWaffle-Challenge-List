@@ -15,6 +15,7 @@ env/
 # Secrets / environment files
 .env
 .env.*
+.env.cloudflared
 
 # IDE
 .vscode/

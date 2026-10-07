@@ -47,5 +47,20 @@ services:
       - app
 
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: flagrantwaffle-cloudflared
+
+    command: tunnel --no-autoupdate run
+
+    env_file:
+      - .env.cloudflared
+
+    restart: unless-stopped
+
+    depends_on:
+      - nginx
+
+
 volumes:
   postgres_data:

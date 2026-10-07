@@ -139,6 +139,7 @@ celerybeat.pid
 .env.*
 !.env.example
 .envrc
+.env.cloudflared
 
 .venv/
 env/
