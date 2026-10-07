@@ -15,8 +15,6 @@ from datetime import datetime
 from psycopg.rows import dict_row
 from urllib.parse import urlparse, parse_qs
 
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, InvalidHashError
 import os
 import uvicorn
 import authlib
@@ -28,11 +26,16 @@ load_dotenv()
 
 app = FastAPI()
 
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.environ["SESSION_SECRET"]
+SESSION_HTTPS_ONLY = (
+    os.getenv("SESSION_HTTPS_ONLY", "false").lower() == "true"
 )
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ["SESSION_SECRET"],
+    https_only=SESSION_HTTPS_ONLY,
+    same_site="lax"
+)
 
 templates = Jinja2Templates(directory="templates")
 
@@ -42,7 +45,6 @@ app.mount(
     name="static"
 )
 
-password_hasher = PasswordHasher()
 
 
 def get_current_user(request: Request):
@@ -345,8 +347,6 @@ def get_levels(request: Request):
     )
 
 
-
-
 @app.get("/login")
 def login_page(request: Request):
     current_user = get_current_user(request)
@@ -361,137 +361,9 @@ def login_page(request: Request):
     )
 
 
-@app.post("/login")
-def login(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...)
-):
-    with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute("""
-                SELECT
-                    id,
-                    username,
-                    password_hash,
-                    is_admin
-                FROM users
-                WHERE username = %s;
-            """, (username,))
-
-            user = cur.fetchone()
-
-    if user is None:
-        return templates.TemplateResponse(
-            request=request,
-            name="login.html",
-            context={
-                "error": "Invalid username or password",
-                "current_user": None
-            }
-        )
-
-    try:
-        password_hasher.verify(
-            user["password_hash"],
-            password
-        )
-
-    except (VerifyMismatchError, InvalidHashError):
-        return templates.TemplateResponse(
-            request=request,
-            name="login.html",
-            context={
-                "error": "Invalid username or password",
-                "current_user": None
-            }
-        )
-
-
-    request.session["user_id"] = user["id"]
-
-    return RedirectResponse(
-        url="/levels",
-        status_code=303
-    )
-
-
 @app.get("/logout")
 def logout(request: Request):
     request.session.clear()
-
-    return RedirectResponse(
-        url="/login",
-        status_code=303
-    )
-
-
-@app.get("/register")
-def register_page(request: Request):
-    current_user = get_current_user(request)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="register.html",
-        context={
-            "error": None,
-            "current_user": current_user
-        }
-    )
-
-
-@app.post("/register")
-def register(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    confirm_password: str = Form(...)
-):
-    current_user = get_current_user(request)
-
-    if password != confirm_password:
-        return templates.TemplateResponse(
-            request=request,
-            name="register.html",
-            context={
-                "error": "Passwords do not match",
-                "current_user": current_user
-            }
-        )
-
-    with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-
-            cur.execute("""
-                SELECT id
-                FROM users
-                WHERE username = %s;
-            """, (username,))
-
-            existing_user = cur.fetchone()
-
-            if existing_user:
-                return templates.TemplateResponse(
-                    request=request,
-                    name="register.html",
-                    context={
-                        "error": "Username already exists",
-                        "current_user": current_user
-                    }
-                )
-
-            hashed_password = password_hasher.hash(password)
-
-            cur.execute("""
-                INSERT INTO users (
-                    username,
-                    password_hash
-                )
-                VALUES (%s, %s);
-            """, (
-                username,
-                hashed_password
-            ))
 
     return RedirectResponse(
         url="/login",

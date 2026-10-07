@@ -4,7 +4,6 @@ uvicorn
 tzdata
 python-dotenv
 jinja2
-argon2-cffi
 python-multipart
 itsdangerous
 authlib
