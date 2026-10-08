@@ -342,6 +342,12 @@
             method="post"
             action="/levels/{{ level.id }}/submit"
             class="submit-form"
+            
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
+            >
         >
 
             <label for="proof_url">

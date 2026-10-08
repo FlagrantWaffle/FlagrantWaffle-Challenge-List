@@ -106,7 +106,12 @@ Deny Submission - FlagrantWaffle
             <button type="submit">
                 Confirm Denial
             </button>
-
+ 
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
+            >
         </form>
 
         <p class="auth-switch">

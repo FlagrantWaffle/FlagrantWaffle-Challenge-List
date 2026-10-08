@@ -26,6 +26,8 @@ from pathlib import Path
 import markdown
 import hashlib
 
+import secrets
+import hmac
 
 load_dotenv()
 
@@ -102,6 +104,30 @@ def require_admin(request: Request):
         )
 
     return current_user
+
+
+def get_csrf_token(request: Request):
+    token = request.session.get("csrf_token")
+
+    if token is None:
+        token = secrets.token_urlsafe(32)
+        request.session["csrf_token"] = token
+
+    return token
+
+
+def verify_csrf_token(request: Request, submitted_token: str):
+    session_token = request.session.get("csrf_token")
+
+    if (
+        session_token is None
+        or not hmac.compare_digest(session_token, submitted_token)
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid CSRF token"
+        )
+
 
 
 # ------------------------------------------
@@ -469,7 +495,8 @@ def leaderboard_page(request: Request):
 def submit_completion(
     request: Request,
     level_id: int,
-    proof_url: str = Form(...)
+    proof_url: str = Form(...),
+    csrf_token: str = Form(...)
 ):
     current_user = get_current_user(request)
 
@@ -478,6 +505,8 @@ def submit_completion(
             url="/login",
             status_code=303
         )
+
+    verify_csrf_token(request, csrf_token)
 
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -553,6 +582,7 @@ def submit_completion(
 def level_page(request: Request, level_id: int):
 
     current_user = get_current_user(request)
+    csrf_token = get_csrf_token(request)
 
     flash_message = request.session.pop(
         "flash_message",
@@ -675,7 +705,8 @@ def level_page(request: Request, level_id: int):
             "flash_message": flash_message,
             "victors": victors,
             "user_completion": user_completion,
-            "pending_submission": pending_submission
+            "pending_submission": pending_submission,
+            "csrf_token": csrf_token
         }
     )
 
@@ -694,10 +725,22 @@ def admin_page(
 
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
+
+            # get number of pending submissions
+            cur.execute("""
+                SELECT COUNT(*) AS pending_count
+                FROM submissions
+                WHERE status = 'pending';
+            """)
+
+            pending_count = cur.fetchone()["pending_count"]
+
+
             # list admin users
             cur.execute("""
-                SELECT username, levels_reviewed FROM users
-                WHERE is_admin = TRUE;                   
+                SELECT username, levels_reviewed
+                FROM users
+                WHERE is_admin = TRUE;
             """)
 
             site_admin = cur.fetchall()
@@ -764,7 +807,8 @@ def admin_page(
             "review_history": review_history,
             "history_page": history_page,
             "total_pages": total_pages,
-            "total_reviews": total_reviews
+            "total_reviews": total_reviews,
+            "pending_count": pending_count
         }
     )
 
@@ -819,9 +863,11 @@ def admin_submissions(request: Request):
 @app.get("/admin/submissions/{submission_id}/approve")
 def approve_submission(
     request: Request,
-    submission_id: int):
+    submission_id: int
+    ):
 
     current_user = require_admin(request)
+    csrf_token = get_csrf_token(request)
 
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -862,7 +908,8 @@ def approve_submission(
         name="admin-approve.html",
         context={
             "current_user": current_user,
-            "submission": submission
+            "submission": submission,
+            "csrf_token": csrf_token
         }
     )
 
@@ -872,10 +919,12 @@ def process_approval(
     request: Request,
     submission_id: int,
     background_tasks: BackgroundTasks,
-    moderator_comment: str = Form(...)
+    moderator_comment: str = Form(...),
+    csrf_token: str = Form(...)
     ):
 
     current_user = require_admin(request)
+    verify_csrf_token(request, csrf_token)
 
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -980,6 +1029,7 @@ def deny_submission(
     submission_id: int):
 
     current_user = require_admin(request)
+    csrf_token = get_csrf_token(request)
 
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -1020,7 +1070,8 @@ def deny_submission(
         name="admin-deny.html",
         context={
             "current_user": current_user,
-            "submission": submission
+            "submission": submission,
+            "csrf_token": csrf_token
         }
     )
 
@@ -1030,9 +1081,11 @@ def process_denial(
     request: Request,
     submission_id: int,
     background_tasks: BackgroundTasks,
-    moderator_comment: str = Form(...)):
+    moderator_comment: str = Form(...),
+    csrf_token: str = Form(...)):
 
     current_user = require_admin(request)
+    verify_csrf_token(request, csrf_token)
 
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
