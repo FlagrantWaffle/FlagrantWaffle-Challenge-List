@@ -1589,3 +1589,20 @@ body {
 .legal-content ul {
     color: var(--text-muted);
 }
+
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    min-height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+}
+
+body > main {
+    flex: 1;
+}

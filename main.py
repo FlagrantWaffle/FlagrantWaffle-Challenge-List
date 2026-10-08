@@ -24,6 +24,8 @@ from discord_bot import send_review_verdict
 
 from pathlib import Path
 import markdown
+import hashlib
+
 
 load_dotenv()
 
@@ -41,6 +43,16 @@ app.add_middleware(
 )
 
 templates = Jinja2Templates(directory="templates")
+
+
+css_path = Path(__file__).resolve().parent / "static" / "css" / "styles.css"
+
+css_version = hashlib.sha256(
+    css_path.read_bytes()
+).hexdigest()[:8]
+
+templates.env.globals["css_version"] = css_version
+
 
 app.mount(
     "/static",
