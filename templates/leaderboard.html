@@ -48,9 +48,11 @@ Waffle Leaderboard
                         </td>
 
                         <td class="leaderboard-user">
-                            {{ user.username }}
+                            <a href="{{ request.url_for('user_profile', username=user.username) }}">
+                                {{ user.username }}
+                            </a>
                         </td>
-
+                        
                         <td>
                             <span class="points-badge">
                                 {{ user.waffle_points }} WP

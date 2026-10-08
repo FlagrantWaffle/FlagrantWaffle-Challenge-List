@@ -8,36 +8,52 @@ Admin Dashboard - FlagrantWaffle
 
 <main class="page-container">
 
-    <section class="admin-header">
+    <section class="profile-header admin-submissions-header">
 
-        <div>
+        <p class="eyebrow">
+            Administration
+        </p>
 
-            <p class="eyebrow">
-                Administration
-            </p>
+        <div class="admin-submissions-header-row">
 
             <h1 class="profile-username">
                 Admin Dashboard
             </h1>
 
-        </div>
+
+            <div class="admin-actions">
+
+                <a
+                    href="/admin/submissions"
+                    class="primary-button"
+                >
+                    Review Submissions
+                </a>
+
+            </div>
 
 
-        <div class="admin-actions">
+            <div class="profile-stats">
 
-            <a
-                href="/admin/submissions"
-                class="primary-button"
-            >
-                Review Submissions
-            </a>
+                <div class="profile-stat">
+
+                    <span class="profile-stat-value">
+                        {{ submissions|length }}
+                    </span>
+
+                    <span class="profile-stat-label">
+                        Pending Review
+                    </span>
+
+                </div>
+
+            </div>
 
         </div>
 
     </section>
 
-
-    <section class="levels-card">
+    <section class="levels-card submissions-card">
 
         <div class="levels-card-header">
 

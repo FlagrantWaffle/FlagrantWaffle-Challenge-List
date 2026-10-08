@@ -1,9 +1,3 @@
----
-title: FlagrantWaffle Challenge List - Privacy Policy
-permalink: /privacy/
----
-
-
 Effective date: 4 October 2026
 
 This Privacy Policy explains how personal information is collected, used and protected when you use the FlagrantWaffle Challenge List ("the Service").

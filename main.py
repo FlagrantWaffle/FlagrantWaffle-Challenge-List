@@ -22,6 +22,9 @@ from discord_oauth import oauth
 from fastapi import FastAPI, Request, Form, HTTPException, BackgroundTasks
 from discord_bot import send_review_verdict
 
+from pathlib import Path
+import markdown
+
 load_dotenv()
 
 app = FastAPI()
@@ -117,8 +120,49 @@ def health(request: Request):
 
 
 @app.get("/")
-def root():
-    return {"message": "Waffle API online"}
+def root(request: Request):
+
+    current_user = get_current_user(request)
+
+    with get_connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute("""
+            SELECT
+                submissions.id,
+                submissions.status,
+                submissions.proof_url,
+                submissions.moderator_comment,
+                submissions.reviewed_at,
+                submitter.username AS submitter_username,
+
+                levels.name AS level_name,
+                levels.id AS level_id
+
+            FROM submissions
+
+            JOIN users AS submitter
+                ON submitter.id = submissions.user_id
+
+            JOIN levels
+                ON levels.id = submissions.level_id
+
+            WHERE submissions.status = 'approved'
+
+            ORDER BY submissions.reviewed_at DESC NULLS LAST, submissions.id DESC
+
+            LIMIT 5;            
+            """)
+
+            review_preview = cur.fetchall()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "current_user": current_user,
+            "review_preview": review_preview
+        }
+    )
 
 
 @app.get("/users")
@@ -138,8 +182,6 @@ def get_users(request: Request):
             users = cur.fetchall()
 
     return users
-
-
 
 
 @app.get("/users/{username}")
@@ -1056,6 +1098,82 @@ def process_denial(
             url="/admin/submissions",
             status_code=303
         )
+
+
+@app.get("/privacy")
+def privacy_policy(request: Request):
+
+    current_user = get_current_user(request)
+
+    markdown_text = Path(
+        "legal/privacy.md"
+    ).read_text(encoding="utf-8")
+
+    legal_html = markdown.markdown(
+        markdown_text,
+        extensions=["extra"]
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="legal.html",
+        context={
+            "current_user": current_user,
+            "page_title": "Privacy Policy",
+            "legal_html": legal_html
+        }
+    )
+
+
+@app.get("/terms")
+def terms_of_service(request: Request):
+
+    current_user = get_current_user(request)
+
+    markdown_text = Path(
+        "legal/terms.md"
+    ).read_text(encoding="utf-8")
+
+    legal_html = markdown.markdown(
+        markdown_text,
+        extensions=["extra"]
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="legal.html",
+        context={
+            "current_user": current_user,
+            "page_title": "Terms of Service",
+            "legal_html": legal_html
+        }
+    )
+
+
+@app.get("/rules")
+def terms_of_service(request: Request):
+
+    current_user = get_current_user(request)
+
+    markdown_text = Path(
+        "legal/rules.md"
+    ).read_text(encoding="utf-8")
+
+    legal_html = markdown.markdown(
+        markdown_text,
+        extensions=["extra"]
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="legal.html",
+        context={
+            "current_user": current_user,
+            "page_title": "Rules of Submission",
+            "legal_html": legal_html
+        }
+    )
+
 
 
 

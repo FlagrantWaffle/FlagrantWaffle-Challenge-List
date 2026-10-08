@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ page_title }} - FlagrantWaffle
+{% endblock %}
+
+{% block content %}
+
+<main class="page-container">
+
+    <section class="legal-page">
+
+        <h1>
+            {{ page_title }}
+        </h1>
+
+        <div class="legal-content">
+            {{ legal_html | safe }}
+        </div>
+
+    </section>
+
+</main>
+
+{% endblock %}

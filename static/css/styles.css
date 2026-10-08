@@ -1345,6 +1345,53 @@ body {
     margin-top: 32px;
 }
 
+.submissions-card {
+    margin-top: 24px;
+}
+
+
+.admin-submissions-header {
+    display: block;
+}
+
+.admin-submissions-header .eyebrow {
+    margin-bottom: 14px;
+}
+
+.admin-submissions-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.admin-submissions-header-row .admin-back,
+.admin-submissions-header-row .profile-stats {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.admin-header {
+    display: block;
+    margin-bottom: 32px;
+}
+
+.admin-header .eyebrow {
+    margin-bottom: 14px;
+}
+
+.admin-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 12px;
+}
+
 /* -------------------------
    PAGINATION
 ------------------------- */
@@ -1368,4 +1415,177 @@ body {
 
     font-size: 13px;
     font-weight: 600;
+}
+
+
+/* -------------------------
+   HOMEPAGE
+------------------------- */
+
+.index-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 48px;
+}
+
+.index-hero-text {
+    max-width: 700px;
+}
+
+.homepage-logo {
+    width: 220px;
+    height: auto;
+    flex-shrink: 0;
+}
+
+/* -------------------------
+   HOMEPAGE SOCIAL LINKS
+------------------------- */
+
+.socials-section {
+    margin-top: 48px;
+    margin-bottom: 48px;
+}
+
+.socials-header {
+    margin-bottom: 20px;
+}
+
+.socials-description {
+    max-width: 700px;
+    color: var(--text-muted);
+}
+
+.socials-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.social-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    min-height: 160px;
+    padding: 22px;
+
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    color: inherit;
+    text-decoration: none;
+
+    transition:
+        transform 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.social-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--brand-blue);
+}
+
+.social-name {
+    color: var(--brand-blue);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.social-text {
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.social-link {
+    margin-top: auto;
+    font-weight: 700;
+}
+
+
+/* Mobile */
+
+@media (max-width: 750px) {
+
+    .socials-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+/* -------------------------
+   FOOTER
+------------------------- */
+
+.site-footer {
+    margin-top: 64px;
+    padding: 24px 0;
+
+    border-top: 1px solid var(--border);
+}
+
+.site-footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.site-footer-links {
+    display: flex;
+    gap: 20px;
+}
+
+.site-footer-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.site-footer-links a:hover {
+    color: var(--brand-blue);
+}
+
+@media (max-width: 600px) {
+    .site-footer-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+
+
+/* -------------------------
+   LEGAL
+------------------------- */
+
+
+.legal-page {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.legal-content {
+    line-height: 1.7;
+}
+
+.legal-content h2 {
+    margin-top: 36px;
+}
+
+.legal-content h3 {
+    margin-top: 24px;
+}
+
+.legal-content p,
+.legal-content ul {
+    color: var(--text-muted);
 }

@@ -8,3 +8,4 @@ python-multipart
 itsdangerous
 authlib
 httpx
+markdown

@@ -17,6 +17,15 @@ Waffle Challenge Levels
             Community challenge levels ranked by difficulty.
             Beat levels, submit completions and earn Waffle Points.
         </p>
+
+        <p class="page-description">
+            Please read the
+            <a href="/rules" target="_blank" rel="noopener noreferrer">
+                submission rules
+            </a>
+        </p>
+
+
     </section>
 
     <section class="levels-card">
@@ -54,8 +63,10 @@ Waffle Challenge Levels
                             </a>
                         </td>
 
-                        <td>
-                            {{ level.creator }}
+                        <td class="leaderboard-user">
+                            <a href="{{ request.url_for('user_profile', username=level.creator|lower) }}">
+                                {{ level.creator }}
+                            </a>
                         </td>
 
                         <td class="muted-cell">

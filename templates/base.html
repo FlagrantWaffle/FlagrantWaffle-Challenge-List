@@ -6,7 +6,7 @@
 
     <title>{% block title %}FlagrantWaffle{% endblock %}</title>
 
-    <link rel="stylesheet" href="/static/css/styles.css?v=4">
+    <link rel="stylesheet" href="/static/css/styles.css?v=14">
 </head>
 
 <body>
@@ -29,6 +29,9 @@
     {% if current_user and current_user.is_admin %}
         <a href="/admin">Admin</a>
     {% endif %}
+
+
+    <a href="/">Home</a>
 
     <a href="/levels">Levels</a>
 
@@ -54,6 +57,32 @@
 
     {% block content %}
     {% endblock %}
+
+<footer class="site-footer">
+
+    <div class="site-footer-content">
+
+        <span>
+            © 2026 FlagrantWaffle
+        </span>
+
+        <div class="site-footer-links">
+            <a href="/rules">
+                Submission Rules
+            </a>
+
+            <a href="/privacy">
+                Privacy Policy
+            </a>
+
+            <a href="/terms">
+                Terms of Service
+            </a>
+        </div>
+
+    </div>
+
+</footer>
 
 </body>
 </html>
