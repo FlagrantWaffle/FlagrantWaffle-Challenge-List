@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from db import get_connection
 
@@ -38,10 +39,13 @@ SESSION_HTTPS_ONLY = (
 )
 
 app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.environ["SESSION_SECRET"],
-    https_only=SESSION_HTTPS_ONLY,
-    same_site="lax"
+    TrustedHostMiddleware,
+    allowed_hosts=[
+        "flagrantwaffle.com",
+        "www.flagrantwaffle.com",
+        "localhost",
+        "127.0.0.1"
+    ]
 )
 
 templates = Jinja2Templates(directory="templates")
@@ -129,10 +133,61 @@ def verify_csrf_token(request: Request, submitted_token: str):
         )
 
 
+def validate_proof_url(proof_url: str):
+    proof_url = proof_url.strip()
+
+    if not proof_url:
+        raise HTTPException(
+            status_code=400,
+            detail="Proof URL cannot be empty"
+        )
+
+    if len(proof_url) > 500:
+        raise HTTPException(
+            status_code=400,
+            detail="Proof URL is too long"
+        )
+
+    if any(character.isspace() for character in proof_url):
+        raise HTTPException(
+            status_code=400,
+            detail="Proof URL cannot contain spaces"
+        )
+
+    parsed_url = urlparse(proof_url)
+
+    if parsed_url.scheme != "https" or not parsed_url.hostname:
+        raise HTTPException(
+            status_code=400,
+            detail="Proof URL must be a valid HTTPS URL"
+        )
+
+    return proof_url
+
+
+
 
 # ------------------------------------------
 # ENDPOINTS
 # ------------------------------------------
+
+
+@app.get("/healthz")
+def healthz():
+    try:
+        with get_connection() as conn:
+            conn.execute("SELECT 1")
+
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="Service unavailable"
+        )
+
+    return {
+        "status": "ok"
+    }
+
 
 @app.get("/health")
 def health(request: Request):
@@ -507,9 +562,26 @@ def submit_completion(
         )
 
     verify_csrf_token(request, csrf_token)
+    proof_url = validate_proof_url(proof_url)
 
     with get_connection() as conn:
         with conn.cursor() as cur:
+
+            # check the level exists
+            cur.execute("""
+                SELECT 1
+                FROM levels
+                WHERE id = %s
+                AND active = TRUE;
+            """, (level_id,))
+
+            level_exists = cur.fetchone() is not None
+
+            if not level_exists:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Active level not found"
+                )
 
             # check whether the user has already completed this level
             cur.execute("""

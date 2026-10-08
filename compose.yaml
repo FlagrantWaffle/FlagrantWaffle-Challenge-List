@@ -1,7 +1,10 @@
 services:
+
   app:
     build: .
     container_name: flagrantwaffle-app
+
+    restart: unless-stopped
 
     env_file:
       - .env
@@ -15,10 +18,25 @@ services:
       db:
         condition: service_healthy
 
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=3)"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 
   db:
     image: postgres:18
     container_name: flagrantwaffle-db
+
+    restart: unless-stopped
 
     environment:
       POSTGRES_DB: ${DB_NAME}
@@ -39,6 +57,8 @@ services:
     image: nginx:alpine
     container_name: flagrantwaffle-nginx
 
+    restart: unless-stopped
+
     ports:
       - "127.0.0.1:8080:80"
 
@@ -46,19 +66,20 @@ services:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
     depends_on:
-      - app
+      app:
+        condition: service_healthy
 
 
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: flagrantwaffle-cloudflared
 
+    restart: unless-stopped
+
     command: tunnel --no-autoupdate run
 
     env_file:
       - .env.cloudflared
-
-    restart: unless-stopped
 
     depends_on:
       - nginx
