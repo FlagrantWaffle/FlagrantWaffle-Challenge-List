@@ -30,6 +30,9 @@ import hashlib
 import secrets
 import hmac
 
+from psycopg.errors import UniqueViolation
+from validation import validate_proof_url, validate_new_level
+
 load_dotenv()
 
 app = FastAPI()
@@ -139,41 +142,6 @@ def verify_csrf_token(request: Request, submitted_token: str):
             status_code=403,
             detail="Invalid CSRF token"
         )
-
-
-def validate_proof_url(proof_url: str):
-    proof_url = proof_url.strip()
-
-    if not proof_url:
-        raise HTTPException(
-            status_code=400,
-            detail="Proof URL cannot be empty"
-        )
-
-    if len(proof_url) > 500:
-        raise HTTPException(
-            status_code=400,
-            detail="Proof URL is too long"
-        )
-
-    if any(character.isspace() for character in proof_url):
-        raise HTTPException(
-            status_code=400,
-            detail="Proof URL cannot contain spaces"
-        )
-
-    parsed_url = urlparse(proof_url)
-
-    if parsed_url.scheme != "https" or not parsed_url.hostname:
-        raise HTTPException(
-            status_code=400,
-            detail="Proof URL must be a valid HTTPS URL"
-        )
-
-    return proof_url
-
-
-
 
 # ------------------------------------------
 # ENDPOINTS
@@ -1243,6 +1211,85 @@ def process_denial(
             url="/admin/submissions",
             status_code=303
         )
+
+
+@app.get("/admin/levels/add")
+def admin_add_level(request: Request):
+    current_user = require_admin(request)
+    csrf_token = get_csrf_token(request)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin-add-level.html",
+        context={
+            "current_user": current_user,
+            "csrf_token": csrf_token
+        }
+    )
+
+
+@app.post("/admin/levels/add")
+def process_addition(
+    request: Request,
+    csrf_token: str = Form(...),
+    name: str = Form(...),
+    gd_id: int = Form(...),
+    creator: str = Form(...),
+    rank: int = Form(...),
+    verification_url: str = Form(...)
+):
+    current_user = require_admin(request)
+
+    verify_csrf_token(
+        request,
+        csrf_token
+    )
+
+    name, creator = validate_new_level(
+        name,
+        creator,
+        gd_id,
+        rank
+    )
+
+    verification_url = validate_proof_url(
+        verification_url
+    )
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+
+                cur.execute("""
+                    INSERT INTO levels (
+                        name,
+                        gd_id,
+                        creator,
+                        rank,
+                        verification_url
+                    )
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id;
+                """, (
+                    name,
+                    gd_id,
+                    creator,
+                    rank,
+                    verification_url
+                ))
+
+                new_level = cur.fetchone()
+
+    except UniqueViolation:
+        raise HTTPException(
+            status_code=409,
+            detail="A level with that Geometry Dash ID already exists"
+        )
+
+    return RedirectResponse(
+        url=f"/levels/{new_level['id']}",
+        status_code=303
+    )
 
 
 @app.get("/privacy")
