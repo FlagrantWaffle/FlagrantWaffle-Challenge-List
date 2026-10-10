@@ -6,16 +6,20 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
 
-    password_hash TEXT,
-
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     levels_reviewed INTEGER NOT NULL DEFAULT 0,
 
-    discord_id TEXT UNIQUE,
+    discord_id TEXT NOT NULL UNIQUE,
     discord_username TEXT,
     discord_display_name TEXT,
     discord_avatar_hash TEXT
 );
+
+
+
+
+
+
 
 
 CREATE TABLE IF NOT EXISTS levels (

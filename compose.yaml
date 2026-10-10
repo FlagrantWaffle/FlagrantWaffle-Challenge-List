@@ -31,6 +31,12 @@ services:
       retries: 3
       start_period: 10s
 
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 
   db:
     image: postgres:18
@@ -52,6 +58,12 @@ services:
       timeout: 5s
       retries: 10
 
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 
   nginx:
     image: nginx:alpine
@@ -69,6 +81,12 @@ services:
       app:
         condition: service_healthy
 
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -83,6 +101,12 @@ services:
 
     depends_on:
       - nginx
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 
 volumes:

@@ -217,6 +217,7 @@ __marimo__/
 
 # database files
 *.db
+backups/
 
 # the "im lazy" files
 *.bat

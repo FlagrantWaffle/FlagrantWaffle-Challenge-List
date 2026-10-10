@@ -48,6 +48,14 @@ app.add_middleware(
     ]
 )
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ["SESSION_SECRET"],
+    https_only=SESSION_HTTPS_ONLY,
+    same_site="lax"
+)
+
+
 templates = Jinja2Templates(directory="templates")
 
 
@@ -760,7 +768,7 @@ def level_page(request: Request, level_id: int):
     if video_id:
 
         level["embed_url"] = (
-            f"https://www.youtube.com/embed/{video_id}"
+            f"https://www.youtube-nocookie.com/embed/{video_id}"
         )
 
     else:
@@ -1380,13 +1388,12 @@ async def discord_callback(request: Request):
                 cur.execute("""
                     INSERT INTO users (
                         username,
-                        password_hash,
                         discord_id,
                         discord_username,
                         discord_display_name,
                         discord_avatar_hash
                     )
-                    VALUES (%s, NULL, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s)
                     RETURNING
                         id,
                         username,
