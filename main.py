@@ -11,23 +11,24 @@ from psycopg.errors import UniqueViolation
 from psycopg.types.json import Jsonb
 
 from db import get_connection
+from ranking import recalculate_waffle_points
+from validation import validate_proof_url, validate_new_level
+
+from discord_oauth import oauth
+from discord_bot import send_review_verdict, send_ranking_changelog, send_new_placement
+
 from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 import os
 import uvicorn
-import authlib
-from discord_oauth import oauth
-from discord_bot import send_review_verdict, send_ranking_changelog, send_new_placement
 from pathlib import Path
 import markdown
 import hashlib
 import secrets
 import hmac
-from validation import validate_proof_url, validate_new_level
 from pydantic import BaseModel
-from ranking import recalculate_waffle_points
 
 load_dotenv()
 
@@ -54,11 +55,44 @@ app.add_middleware(
     same_site="lax"
 )
 
+BASE_DIR = Path(__file__).resolve().parent
 
-templates = Jinja2Templates(directory="templates")
+
+def get_csrf_token(request: Request):
+    token = request.session.get("csrf_token")
+
+    if token is None:
+        token = secrets.token_urlsafe(32)
+        request.session["csrf_token"] = token
+
+    return token
 
 
-css_path = Path(__file__).resolve().parent / "static" / "css" / "styles.css"
+def verify_csrf_token(request: Request, submitted_token: str):
+    session_token = request.session.get("csrf_token")
+
+    if (
+        session_token is None
+        or not hmac.compare_digest(session_token, submitted_token)
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid CSRF token"
+        )
+
+
+def template_context(request: Request):
+    return {
+        "csrf_token": get_csrf_token(request)
+    }
+
+
+templates = Jinja2Templates(
+    directory=str(BASE_DIR / "templates"),
+    context_processors=[template_context]
+)
+
+css_path = BASE_DIR / "static" / "css" / "styles.css"
 
 css_version = hashlib.sha256(
     css_path.read_bytes()
@@ -66,13 +100,11 @@ css_version = hashlib.sha256(
 
 templates.env.globals["css_version"] = css_version
 
-
 app.mount(
     "/static",
-    StaticFiles(directory="static"),
+    StaticFiles(directory=str(BASE_DIR / "static")),
     name="static"
 )
-
 
 
 def get_current_user(request: Request):
@@ -117,29 +149,6 @@ def require_admin(request: Request):
     return current_user
 
 
-def get_csrf_token(request: Request):
-    token = request.session.get("csrf_token")
-
-    if token is None:
-        token = secrets.token_urlsafe(32)
-        request.session["csrf_token"] = token
-
-    return token
-
-
-def verify_csrf_token(request: Request, submitted_token: str):
-    session_token = request.session.get("csrf_token")
-
-    if (
-        session_token is None
-        or not hmac.compare_digest(session_token, submitted_token)
-    ):
-        raise HTTPException(
-            status_code=403,
-            detail="Invalid CSRF token"
-        )
-
-
 class RankingUpdate(BaseModel):
     level_ids: list[int]
     csrf_token: str
@@ -171,7 +180,7 @@ def healthz():
 @app.get("/health")
 def health(request: Request):
 
-    current_user = require_admin(request)
+    require_admin(request)
 
     try:
         with get_connection() as conn:
@@ -240,7 +249,7 @@ def root(request: Request):
 @app.get("/users")
 def get_users(request: Request):
 
-    current_user = require_admin(request)
+    require_admin(request)
 
 
     with get_connection() as conn:
@@ -389,9 +398,6 @@ def user_profile(request: Request, username: str):
                     JOIN levels
                         ON levels.id = submissions.level_id
 
-                    LEFT JOIN users AS reviewer
-                        ON reviewer.id = submissions.reviewed_by
-
                     WHERE submissions.user_id = %s
                     AND submissions.status IN ('approved', 'denied')
 
@@ -475,8 +481,16 @@ def login_page(request: Request):
     )
 
 
-@app.get("/logout")
-def logout(request: Request):
+@app.post("/logout")
+def logout(
+    request: Request,
+    csrf_token: str = Form(...)
+):
+    verify_csrf_token(
+        request,
+        csrf_token
+    )
+
     request.session.clear()
 
     return RedirectResponse(
@@ -617,7 +631,6 @@ def submit_completion(
                 proof_url
             ))
 
-            # i
 
     request.session["flash_message"] = (
         "Submission sent successfully!"
@@ -1514,8 +1527,8 @@ def privacy_policy(request: Request):
 
     current_user = get_current_user(request)
 
-    markdown_text = Path(
-        "legal/privacy.md"
+    markdown_text = (
+        BASE_DIR / "legal" / "privacy.md"
     ).read_text(encoding="utf-8")
 
     legal_html = markdown.markdown(
@@ -1539,8 +1552,8 @@ def terms_of_service(request: Request):
 
     current_user = get_current_user(request)
 
-    markdown_text = Path(
-        "legal/terms.md"
+    markdown_text = (
+        BASE_DIR / "legal" / "terms.md"
     ).read_text(encoding="utf-8")
 
     legal_html = markdown.markdown(
@@ -1560,13 +1573,14 @@ def terms_of_service(request: Request):
 
 
 @app.get("/rules")
-def terms_of_service(request: Request):
+def submission_rules(request: Request):
 
     current_user = get_current_user(request)
 
-    markdown_text = Path(
-        "legal/rules.md"
+    markdown_text = (
+        BASE_DIR / "legal" / "rules.md"
     ).read_text(encoding="utf-8")
+
 
     legal_html = markdown.markdown(
         markdown_text,
