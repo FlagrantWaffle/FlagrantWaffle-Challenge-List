@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi import FastAPI, Request, Form, HTTPException, BackgroundTasks
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
@@ -6,32 +6,28 @@ from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from psycopg.rows import dict_row
+from psycopg.errors import UniqueViolation
+from psycopg.types.json import Jsonb
+
 from db import get_connection
-
 from dotenv import load_dotenv
-
 from zoneinfo import ZoneInfo
 from datetime import datetime
-
-from psycopg.rows import dict_row
 from urllib.parse import urlparse, parse_qs
-
 import os
 import uvicorn
 import authlib
 from discord_oauth import oauth
-from fastapi import FastAPI, Request, Form, HTTPException, BackgroundTasks
-from discord_bot import send_review_verdict
-
+from discord_bot import send_review_verdict, send_ranking_changelog, send_new_placement
 from pathlib import Path
 import markdown
 import hashlib
-
 import secrets
 import hmac
-
-from psycopg.errors import UniqueViolation
 from validation import validate_proof_url, validate_new_level
+from pydantic import BaseModel
+from ranking import recalculate_waffle_points
 
 load_dotenv()
 
@@ -142,6 +138,13 @@ def verify_csrf_token(request: Request, submitted_token: str):
             status_code=403,
             detail="Invalid CSRF token"
         )
+
+
+class RankingUpdate(BaseModel):
+    level_ids: list[int]
+    csrf_token: str
+
+
 
 # ------------------------------------------
 # ENDPOINTS
@@ -1213,6 +1216,38 @@ def process_denial(
         )
 
 
+@app.get("/admin/levels")
+def admin_levels(request: Request):
+    current_user = require_admin(request)
+    csrf_token = get_csrf_token(request)
+
+    with get_connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+
+            cur.execute("""
+                SELECT
+                    id,
+                    name,
+                    creator,
+                    rank
+                FROM levels
+                WHERE active = TRUE
+                ORDER BY rank;
+            """)
+
+            levels = cur.fetchall()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin-levels.html",
+        context={
+            "current_user": current_user,
+            "levels": levels,
+            "csrf_token": csrf_token
+        }
+    )
+
+
 @app.get("/admin/levels/add")
 def admin_add_level(request: Request):
     current_user = require_admin(request)
@@ -1231,6 +1266,7 @@ def admin_add_level(request: Request):
 @app.post("/admin/levels/add")
 def process_addition(
     request: Request,
+    background_tasks: BackgroundTasks,
     csrf_token: str = Form(...),
     name: str = Form(...),
     gd_id: int = Form(...),
@@ -1260,6 +1296,30 @@ def process_addition(
         with get_connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
+                # get current number of active levels
+                cur.execute("""
+                    SELECT COUNT(*) AS count
+                    FROM levels
+                    WHERE active = TRUE;
+                """)
+
+                level_count = cur.fetchone()["count"]
+
+                if rank > level_count + 1:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Rank must be between 1 and {level_count + 1}"
+                    )
+
+                # make space for the new level
+                cur.execute("""
+                    UPDATE levels
+                    SET rank = rank + 1
+                    WHERE active = TRUE
+                    AND rank >= %s;
+                """, (rank,))
+
+                # add the new level
                 cur.execute("""
                     INSERT INTO levels (
                         name,
@@ -1280,17 +1340,174 @@ def process_addition(
 
                 new_level = cur.fetchone()
 
+                # recalculate WP for the whole list
+                recalculate_waffle_points(cur)
+
+                # update changelog
+                changes = [
+                    {
+                        "type": "level_added",
+                        "level_id": new_level["id"],
+                        "level_name": name,
+                        "rank": rank
+                    }
+                ]
+
+                cur.execute("""
+                    INSERT INTO changelog (
+                        admin_id,
+                        changes
+                    )
+                    VALUES (%s, %s);
+                """, (
+                    current_user["id"],
+                    Jsonb(changes)
+                ))
+
     except UniqueViolation:
         raise HTTPException(
             status_code=409,
             detail="A level with that Geometry Dash ID already exists"
         )
 
+    background_tasks.add_task(
+        send_new_placement,
+        name,
+        rank,
+        verification_url
+    )
+
     return RedirectResponse(
         url=f"/levels/{new_level['id']}",
         status_code=303
     )
 
+@app.post("/admin/levels/reorder")
+def reorder_levels(
+    request: Request,
+    ranking: RankingUpdate,
+    background_tasks: BackgroundTasks
+):
+    current_user = require_admin(request)
+
+    verify_csrf_token(
+        request,
+        ranking.csrf_token
+    )
+
+    if not ranking.level_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="Ranking cannot be empty"
+        )
+
+    if len(ranking.level_ids) != len(set(ranking.level_ids)):
+        raise HTTPException(
+            status_code=400,
+            detail="Duplicate level IDs in ranking"
+        )
+
+    with get_connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+
+            # get the current active ranking
+            cur.execute("""
+                SELECT
+                    id,
+                    name,
+                    rank
+                FROM levels
+                WHERE active = TRUE
+                ORDER BY rank;
+            """)
+
+            current_levels = cur.fetchall()
+
+            current_ids = [
+                level["id"]
+                for level in current_levels
+            ]
+
+            # make sure submitted ranking matches active levels
+            if (
+                len(ranking.level_ids) != len(current_ids)
+                or set(ranking.level_ids) != set(current_ids)
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Submitted ranking does not match active levels"
+                )
+
+            # remember the old ranking before changing anything
+            old_ranks = {
+                level["id"]: level["rank"]
+                for level in current_levels
+            }
+
+            level_names = {
+                level["id"]: level["name"]
+                for level in current_levels
+            }
+
+            # update the ranking
+            for new_rank, level_id in enumerate(
+                ranking.level_ids,
+                start=1
+            ):
+                cur.execute("""
+                    UPDATE levels
+                    SET rank = %s
+                    WHERE id = %s
+                    AND active = TRUE;
+                """, (
+                    new_rank,
+                    level_id
+                ))
+
+            # recalculate waffle points for the new ranking
+            recalculate_waffle_points(cur)
+
+            # build the changelog
+            changes = []
+
+            for new_rank, level_id in enumerate(
+                ranking.level_ids,
+                start=1
+            ):
+                old_rank = old_ranks[level_id]
+
+                if old_rank != new_rank:
+                    changes.append({
+                        "level_id": level_id,
+                        "level_name": level_names[level_id],
+                        "old_rank": old_rank,
+                        "new_rank": new_rank
+                    })
+
+            # save the changelog as part of the same transaction
+            if changes:
+                cur.execute("""
+                    INSERT INTO changelog (
+                        admin_id,
+                        changes
+                    )
+                    VALUES (%s, %s);
+                """, (
+                    current_user["id"],
+                    Jsonb(changes)
+                ))
+
+    # only tell discord once the DB transaction succeeded
+    if changes:
+        background_tasks.add_task(
+            send_ranking_changelog,
+            changes
+        )
+
+    return {
+        "status": "ok",
+        "changes": changes
+    }
 
 @app.get("/privacy")
 def privacy_policy(request: Request):

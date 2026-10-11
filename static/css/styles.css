@@ -1196,3 +1196,17 @@ a:hover {
     }
 
 }
+
+
+/* -------------------------
+   drag-and-drop
+------------------------- */
+
+.drag-handle {
+    cursor: grab;
+    user-select: none;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}

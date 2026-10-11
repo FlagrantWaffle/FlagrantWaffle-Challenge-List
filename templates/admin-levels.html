@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}
+Manage Levels
+{% endblock %}
+
+{% block content %}
+
+<main class="page-container">
+
+    <p class="eyebrow">Administration</p>
+    <h1>Manage Levels</h1>
+
+    <table class="levels-table">
+
+        <thead>
+            <tr>
+                <th></th>
+                <th>Rank</th>
+                <th>Level</th>
+                <th>Creator</th>
+            </tr>
+        </thead>
+
+        <tbody id="level-ranking">
+            {% for level in levels %}
+
+            <tr data-level-id="{{ level.id }}">
+                <td class="drag-handle">
+                    ☰
+                </td>
+
+                <td class="rank-display">
+                    #{{ level.rank }}
+                </td>
+
+                <td>
+                    {{ level.name }}
+                </td>
+
+                <td>
+                    {{ level.creator }}
+                </td>
+            </tr>
+
+            {% endfor %}
+        </tbody>
+
+    </table>
+
+    <div class="admin-actions">
+
+        <button
+            type="button"
+            class="secondary-button"
+            id="cancel-ranking"
+            disabled
+        >
+            Cancel
+        </button>
+
+        <button
+            type="button"
+            class="primary-button"
+            id="confirm-ranking"
+            disabled
+        >
+            Confirm Ranking Changes
+        </button>
+
+    </div>
+
+
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+
+<script>
+    const rankingTable = document.getElementById("level-ranking");
+    const confirmButton = document.getElementById("confirm-ranking");
+    const cancelButton = document.getElementById("cancel-ranking");
+
+    let originalOrder = Array.from(
+        rankingTable.querySelectorAll("tr")
+    ).map(row => row.dataset.levelId);
+
+    function updateDisplayedRanks() {
+        const rows = rankingTable.querySelectorAll("tr");
+
+        rows.forEach((row, index) => {
+            const rankDisplay = row.querySelector(".rank-display");
+            rankDisplay.textContent = `#${index + 1}`;
+        });
+    }
+
+    function getRankingOrder() {
+        return Array.from(
+            rankingTable.querySelectorAll("tr")
+        ).map(row => row.dataset.levelId);
+    }
+
+    function restoreOriginalOrder() {
+        originalOrder.forEach(levelId => {
+            const row = rankingTable.querySelector(
+                `[data-level-id="${levelId}"]`
+            );
+
+            rankingTable.appendChild(row);
+        });
+
+        updateDisplayedRanks();
+
+        confirmButton.disabled = true;
+        cancelButton.disabled = true;
+    }
+
+    new Sortable(rankingTable, {
+        animation: 150,
+        handle: ".drag-handle",
+
+        onEnd: function () {
+            updateDisplayedRanks();
+
+            confirmButton.disabled = false;
+            cancelButton.disabled = false;
+        }
+    });
+
+    cancelButton.addEventListener("click", function () {
+        restoreOriginalOrder();
+    });
+
+    confirmButton.addEventListener("click", async function () {
+        const rankingOrder = getRankingOrder().map(Number);
+
+        const response = await fetch("/admin/levels/reorder", {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                level_ids: rankingOrder,
+                csrf_token: "{{ csrf_token }}"
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            alert(result.detail || "Failed to update ranking.");
+            return;
+        }
+
+        originalOrder = getRankingOrder();
+
+        confirmButton.disabled = true;
+        cancelButton.disabled = true;
+
+        alert("Ranking updated successfully!");
+    });
+
+</script>
+
+{% endblock %}

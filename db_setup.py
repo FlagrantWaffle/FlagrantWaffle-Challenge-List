@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS levels (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name TEXT NOT NULL,
-    gd_id INTEGER NOT NULL UNIQUE,
+    gd_id BIGINT NOT NULL UNIQUE,
     creator TEXT NOT NULL,
     rank INTEGER,
     points INTEGER,
@@ -75,6 +75,15 @@ CREATE TABLE IF NOT EXISTS completions (
     FOREIGN KEY (submission_id) REFERENCES submissions(id),
 
     UNIQUE (user_id, level_id)
+)
+
+
+CREATE TABLE IF NOT EXISTS CHANGELOG (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    admin_id INTEGER NOT NULL,
+    changes JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (admin_id) REFERENCES users(id)
 );
 """
 
