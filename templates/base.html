@@ -6,7 +6,7 @@
 
     <title>{% block title %}FlagrantWaffle{% endblock %}</title>
 
-    <link rel="stylesheet" href="/static/css/styles.css?v=4">
+    <link rel="stylesheet" href="/static/css/styles.css?v={{ css_version }}">
 </head>
 
 <body>
@@ -30,6 +30,9 @@
         <a href="/admin">Admin</a>
     {% endif %}
 
+
+    <a href="/">Home</a>
+
     <a href="/levels">Levels</a>
 
     <a href="/leaderboard">Leaderboard</a>
@@ -39,16 +42,21 @@
             {{ current_user.username }}
         </a>
 
-        <a href="/logout">
-            Logout
-        </a>
+        <form method="post" action="/logout" class="nav-logout-form">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
+            >
+
+            <button type="submit" class="nav-logout-button">
+                Logout
+            </button>
+        </form>
+
     {% else %}
         <a href="/login">
             Login
-        </a>
-
-        <a href="/register">
-            Register
         </a>
     {% endif %}
 
@@ -58,6 +66,32 @@
 
     {% block content %}
     {% endblock %}
+
+<footer class="site-footer">
+
+    <div class="site-footer-content">
+
+        <span>
+            © 2026 FlagrantWaffle
+        </span>
+
+        <div class="site-footer-links">
+            <a href="/rules">
+                Submission Rules
+            </a>
+
+            <a href="/privacy">
+                Privacy Policy
+            </a>
+
+            <a href="/terms">
+                Terms of Service
+            </a>
+        </div>
+
+    </div>
+
+</footer>
 
 </body>
 </html>

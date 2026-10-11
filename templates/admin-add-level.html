@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}
+Add Level
+{% endblock %}
+
+{% block content %}
+
+<main class="page-container">
+
+    <p class="eyebrow">Administration</p>
+    <h1>Add Level</h1>
+
+    <div class="submit-modal">
+
+        <div class="submit-modal-header">
+            <div>
+                <p class="eyebrow">
+                    Level Submission
+                </p>
+            </div>
+        </div>
+
+        <form
+            method="post"
+            action="/admin/levels/add"
+            class="submit-form"
+        >
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
+            >
+
+            <label for="name">
+                Level Name
+            </label>
+
+            <input
+                type="text"
+                id="name"
+                name="name"
+                required
+            >
+
+            <label for="gd_id">
+                Geometry Dash ID
+            </label>
+
+            <input
+                type="number"
+                id="gd_id"
+                name="gd_id"
+                required
+            >
+
+            <label for="creator">
+                Creator
+            </label>
+
+            <input
+                type="text"
+                id="creator"
+                name="creator"
+                required
+            >
+
+            <label for="rank">
+                Rank
+            </label>
+
+            <input
+                type="number"
+                id="rank"
+                name="rank"
+                min="1"
+                required
+            >
+
+            <label for="verification_url">
+                Verification URL
+            </label>
+
+            <input
+                type="url"
+                id="verification_url"
+                name="verification_url"
+                placeholder="https://www.youtube.com/watch?v=..."
+                required
+            >
+
+            <p class="submission-rules-note">
+                By submitting, you confirm that the level has been verified
+                and is a suitable addition to the FWCL.
+            </p>
+
+            <div class="submit-modal-actions">
+
+                <a
+                    href="/admin"
+                    class="secondary-button"
+                >
+                    Back
+                </a>
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                >
+                    Add Level
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</main>
+
+{% endblock %}

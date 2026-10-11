@@ -1,5 +1,237 @@
-    <html>
-        <body>
-            <h1>hello</h1>
-        </body>
-    </html>
+{% extends "base.html" %}
+
+{% block title %}
+Index Dashboard - FlagrantWaffle
+{% endblock %}
+
+{% block content %}
+
+<main class="page-container">
+
+    <section class="index-hero">
+
+        <div class="index-hero-text">
+
+            <p class="eyebrow">
+                FlagrantWaffle Challenge List
+            </p>
+
+            <h1 class="index-title">
+                Welcome to the FlagrantWaffle Challenge List!
+            </h1>
+
+            <p>
+                The home of FlagrantWaffle community challenges.
+                Complete challenges, submit proof, earn Waffle Points,
+                and compete with other viewers on the leaderboard.
+            </p>
+
+        </div>
+
+        <img
+            src="/static/images/waffle_icon.png"
+            alt="FlagrantWaffle logo"
+            class="homepage-logo"
+        >
+
+    </section>
+
+
+    <section class="info-box">
+
+        <h2 class="index-section-title">
+            How it works
+        </h2>
+
+        <p>
+            Complete a challenge, submit your proof, and wait for moderator review.
+            Approved completions earn Waffle Points and appear on your profile and the leaderboard.
+        </p>
+
+    </section>
+
+
+    <section class="info-box">
+
+        <h2 class="index-section-title">
+            Who is FlagrantWaffle?
+        </h2>
+
+        <p>
+            I'm a streamer who mainly plays Geometry Dash, alongside some variety content.
+            I stream most days, so feel free to drop by and say hi!
+        </p>
+
+    </section>
+
+
+    <section class="levels-card review-history-card">
+
+        <div class="levels-card-header">
+
+            <div>
+                <h2>
+                    Recent Completions
+                </h2>
+            </div>
+
+        </div>
+
+
+        <div class="table-wrapper">
+
+            <table class="levels-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Player</th>
+                        <th>Level</th>
+                        <th>Moderator Comment</th>
+                        <th>Approved on</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% if review_preview %}
+
+                        {% for review in review_preview %}
+
+                        <tr>
+
+                            <td class="level-name-cell">
+                                <a href="/users/{{ review.submitter_username }}">
+                                    {{ review.submitter_username }}
+                                </a>
+                            </td>
+
+
+                            <td class="level-name-cell">
+                                <a href="/levels/{{ review.level_id }}">
+                                    {{ review.level_name }}
+                                </a>
+                            </td>
+
+
+                            <td class="muted-cell">
+                                {{ review.moderator_comment or "-" }}
+                            </td>
+
+
+                            <td class="muted-cell">
+                                {{ review.reviewed_at.strftime("%d %b %Y") }}
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+                            <td colspan="4" class="muted-cell">
+                                No approved completions yet.
+                            </td>
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+    <section class="socials-section">
+
+        <div class="socials-header">
+
+            <p class="eyebrow">
+                FlagrantWaffle Links
+            </p>
+
+            <h2 class="index-section-title">
+                Find me elsewhere
+            </h2>
+
+            <p class="socials-description">
+                Catch the streams on Twitch, check out videos and completions on YouTube,
+                or join the community on Discord.
+            </p>
+
+        </div>
+
+
+        <div class="socials-grid">
+
+            <a
+                href="https://twitch.tv/flagrantwaffle"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-card"
+            >
+                <span class="social-name">
+                    Twitch
+                </span>
+
+                <span class="social-text">
+                    Watch the streams and hang out live.
+                </span>
+
+                <span class="social-link">
+                    Visit Twitch →
+                </span>
+            </a>
+
+
+            <a
+                href="https://www.youtube.com/@FlagrantWaffle"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-card"
+            >
+                <span class="social-name">
+                    YouTube
+                </span>
+
+                <span class="social-text">
+                    Geometry Dash completions, highlights, and other videos.
+                </span>
+
+                <span class="social-link">
+                    Visit YouTube →
+                </span>
+            </a>
+
+
+            <a
+                href="https://discord.com/invite/7Bz6sD4JT4"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-card"
+            >
+                <span class="social-name">
+                    Discord
+                </span>
+
+                <span class="social-text">
+                    Join the community and keep up with everything FlagrantWaffle.
+                </span>
+
+                <span class="social-link">
+                    Join Discord →
+                </span>
+            </a>
+
+        </div>
+
+</section>
+
+</main>
+
+{% endblock %}

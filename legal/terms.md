@@ -1,9 +1,3 @@
----
-title: FlagrantWaffle Challenge List - Terms of Service
-permalink: /terms/
----
-
-
 Effective date: 4 October 2026
 
 These Terms of Service ("Terms") govern your use of the FlagrantWaffle Challenge List, including its website, submission system, leaderboards, moderation features and associated Discord integrations (collectively, the "Service").

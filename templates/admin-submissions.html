@@ -8,39 +8,42 @@ Challenge Submissions - FlagrantWaffle
 
 <main class="page-container">
 
-    <section class="profile-header">
+    <section class="profile-header admin-submissions-header">
 
         <p class="eyebrow">
             Administration
         </p>
 
-        <h1 class="profile-username">
-            Challenge Submissions
-        </h1>
+        <div class="admin-submissions-header-row">
 
-    
-        <div class="admin-back">
-            <a
-                href="/admin"
-                class="primary-button"
-            >
-                ← Admin Dashboard
-            </a>
-        </div>
+            <h1 class="profile-username">
+                Challenge Submissions
+            </h1>
 
 
+            <div class="admin-back">
+                <a
+                    href="/admin"
+                    class="primary-button"
+                >
+                    ← Admin Dashboard
+                </a>
+            </div>
 
-        <div class="profile-stats">
 
-            <div class="profile-stat">
+            <div class="profile-stats">
 
-                <span class="profile-stat-value">
-                    {{ submissions|length }}
-                </span>
+                <div class="profile-stat">
 
-                <span class="profile-stat-label">
-                    Pending Review
-                </span>
+                    <span class="profile-stat-value">
+                        {{ submissions|length }}
+                    </span>
+
+                    <span class="profile-stat-label">
+                        Pending Review
+                    </span>
+
+                </div>
 
             </div>
 
@@ -49,7 +52,7 @@ Challenge Submissions - FlagrantWaffle
     </section>
 
 
-    <section class="levels-card">
+    <section class="levels-card submissions-card">
 
         <div class="levels-card-header">
 

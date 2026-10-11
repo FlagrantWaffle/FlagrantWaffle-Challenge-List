@@ -343,6 +343,12 @@
             action="/levels/{{ level.id }}/submit"
             class="submit-form"
         >
+          
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token }}"
+        >
 
             <label for="proof_url">
                 Proof URL
@@ -356,6 +362,12 @@
                 required
             >
 
+            <p class="submission-rules-note">
+                By submitting, you confirm that your completion follows the
+                <a href="/rules" target="_blank" rel="noopener noreferrer">
+                    submission rules
+                </a>.
+            </p>
 
             <div class="submit-modal-actions">
 

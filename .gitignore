@@ -139,6 +139,7 @@ celerybeat.pid
 .env.*
 !.env.example
 .envrc
+.env.cloudflared
 
 .venv/
 env/
@@ -216,6 +217,7 @@ __marimo__/
 
 # database files
 *.db
+backups/
 
 # the "im lazy" files
 *.bat

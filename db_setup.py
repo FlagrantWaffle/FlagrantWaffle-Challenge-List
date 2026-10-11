@@ -5,49 +5,29 @@ SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    is_admin BOOLEAN NOT NULL DEFAULT FALSE
+
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    levels_reviewed INTEGER NOT NULL DEFAULT 0,
+
+    discord_id TEXT NOT NULL UNIQUE,
+    discord_username TEXT,
+    discord_display_name TEXT,
+    discord_avatar_hash TEXT
 );
+
+
 
 CREATE TABLE IF NOT EXISTS levels (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name TEXT NOT NULL,
-    gd_id INTEGER NOT NULL UNIQUE,
+    gd_id BIGINT NOT NULL UNIQUE,
     creator TEXT NOT NULL,
     rank INTEGER,
     points INTEGER,
     verification_url TEXT NOT NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE
-    );
-
-INSERT INTO levels (
-    name,
-    gd_id,
-    creator,
-    rank,
-    points,
-    verification_url) VALUES (
-    'TEST',
-    123,
-    'FlagrantWaffle',
-    999,
-    0,
-    'https://www.youtube.com/watch?v=YAgJ9XugGBo&list=RDYAgJ9XugGBo&start_radio=1')
-    ON CONFLICT (gd_id) DO NOTHING;
-    
-
-    
-CREATE TABLE IF NOT EXISTS completions (
-    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    level_id INTEGER NOT NULL,
-    completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (level_id) REFERENCES levels(id),
-
-    UNIQUE (user_id, level_id)
 );
+
 
 CREATE TABLE IF NOT EXISTS submissions (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -74,6 +54,37 @@ CREATE TABLE IF NOT EXISTS submissions (
 );
 
 
+CREATE UNIQUE INDEX IF NOT EXISTS unique_pending_submission_per_level
+ON submissions (user_id, level_id)
+WHERE status = 'pending';
+
+
+CREATE TABLE IF NOT EXISTS completions (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    user_id INTEGER NOT NULL,
+    level_id INTEGER NOT NULL,
+    submission_id INTEGER NOT NULL UNIQUE,
+
+    proof_url TEXT NOT NULL,
+
+    completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (level_id) REFERENCES levels(id),
+    FOREIGN KEY (submission_id) REFERENCES submissions(id),
+
+    UNIQUE (user_id, level_id)
+);
+
+
+CREATE TABLE IF NOT EXISTS CHANGELOG (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    admin_id INTEGER NOT NULL,
+    changes JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (admin_id) REFERENCES users(id)
+);
 """
 
 

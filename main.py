@@ -1,48 +1,105 @@
-from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi import FastAPI, Request, Form, HTTPException, BackgroundTasks
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 
 from starlette.middleware.sessions import SessionMiddleware
-
-from db import get_connection
-
-from dotenv import load_dotenv
-
-from zoneinfo import ZoneInfo
-from datetime import datetime
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from psycopg.rows import dict_row
-from urllib.parse import urlparse, parse_qs
+from psycopg.errors import UniqueViolation
+from psycopg.types.json import Jsonb
 
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, InvalidHashError
-import os
-import uvicorn
-import authlib
+from db import get_connection
+from ranking import recalculate_waffle_points
+from validation import validate_proof_url, validate_new_level
+
 from discord_oauth import oauth
-from fastapi import FastAPI, Request, Form, HTTPException, BackgroundTasks
-from discord_bot import send_review_verdict
+from discord_bot import send_review_verdict, send_ranking_changelog, send_new_placement, send_new_submission
+
+from dotenv import load_dotenv
+from zoneinfo import ZoneInfo
+from datetime import datetime
+from urllib.parse import urlparse, parse_qs
+import os
+from pathlib import Path
+import markdown
+import hashlib
+import secrets
+import hmac
+from pydantic import BaseModel
 
 load_dotenv()
 
 app = FastAPI()
 
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.environ["SESSION_SECRET"]
+SESSION_HTTPS_ONLY = (
+    os.getenv("SESSION_HTTPS_ONLY", "false").lower() == "true"
 )
 
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=[
+        "flagrantwaffle.com",
+        "www.flagrantwaffle.com",
+        "localhost",
+        "127.0.0.1"
+    ]
+)
 
-templates = Jinja2Templates(directory="templates")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ["SESSION_SECRET"],
+    https_only=SESSION_HTTPS_ONLY,
+    same_site="lax"
+)
+
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def get_csrf_token(request: Request):
+    token = request.session.get("csrf_token")
+
+    if token is None:
+        token = secrets.token_urlsafe(32)
+        request.session["csrf_token"] = token
+
+    return token
+
+
+def verify_csrf_token(request: Request, submitted_token: str):
+    session_token = request.session.get("csrf_token")
+
+    if (
+        session_token is None
+        or not hmac.compare_digest(session_token, submitted_token)
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid CSRF token"
+        )
+
+
+def template_context(request: Request):
+    return {
+        "csrf_token": get_csrf_token(request)
+    }
+
+
+templates = Jinja2Templates(
+    directory=str(BASE_DIR / "templates"),
+    context_processors=[template_context]
+)
+
+css_path = BASE_DIR / "static" / "css" / "styles.css"
+css_version = hashlib.sha256(css_path.read_bytes()).hexdigest()[:8]
+templates.env.globals["css_version"] = css_version
 
 app.mount(
     "/static",
-    StaticFiles(directory="static"),
+    StaticFiles(directory=str(BASE_DIR / "static")),
     name="static"
 )
-
-password_hasher = PasswordHasher()
 
 
 def get_current_user(request: Request):
@@ -87,14 +144,37 @@ def require_admin(request: Request):
     return current_user
 
 
+class RankingUpdate(BaseModel):
+    level_ids: list[int]
+    csrf_token: str
+
+
 # ------------------------------------------
 # ENDPOINTS
 # ------------------------------------------
 
+
+@app.get("/healthz")
+def healthz():
+    try:
+        with get_connection() as conn:
+            conn.execute("SELECT 1")
+
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="Service unavailable"
+        )
+
+    return {
+        "status": "ok"
+    }
+
+
 @app.get("/health")
 def health(request: Request):
 
-    current_user = require_admin(request)
+    require_admin(request)
 
     try:
         with get_connection() as conn:
@@ -114,15 +194,58 @@ def health(request: Request):
     }
 
 
+
+
 @app.get("/")
-def root():
-    return {"message": "Waffle API online"}
+def root(request: Request):
+
+    current_user = get_current_user(request)
+
+    with get_connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute("""
+            SELECT
+                submissions.id,
+                submissions.status,
+                submissions.proof_url,
+                submissions.moderator_comment,
+                submissions.reviewed_at,
+                submitter.username AS submitter_username,
+
+                levels.name AS level_name,
+                levels.id AS level_id
+
+            FROM submissions
+
+            JOIN users AS submitter
+                ON submitter.id = submissions.user_id
+
+            JOIN levels
+                ON levels.id = submissions.level_id
+
+            WHERE submissions.status = 'approved'
+
+            ORDER BY submissions.reviewed_at DESC NULLS LAST, submissions.id DESC
+
+            LIMIT 5;            
+            """)
+
+            review_preview = cur.fetchall()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "current_user": current_user,
+            "review_preview": review_preview
+        }
+    )
 
 
 @app.get("/users")
 def get_users(request: Request):
 
-    current_user = require_admin(request)
+    require_admin(request)
 
 
     with get_connection() as conn:
@@ -136,8 +259,6 @@ def get_users(request: Request):
             users = cur.fetchall()
 
     return users
-
-
 
 
 @app.get("/users/{username}")
@@ -273,9 +394,6 @@ def user_profile(request: Request, username: str):
                     JOIN levels
                         ON levels.id = submissions.level_id
 
-                    LEFT JOIN users AS reviewer
-                        ON reviewer.id = submissions.reviewed_by
-
                     WHERE submissions.user_id = %s
                     AND submissions.status IN ('approved', 'denied')
 
@@ -345,8 +463,6 @@ def get_levels(request: Request):
     )
 
 
-
-
 @app.get("/login")
 def login_page(request: Request):
     current_user = get_current_user(request)
@@ -361,137 +477,17 @@ def login_page(request: Request):
     )
 
 
-@app.post("/login")
-def login(
+@app.post("/logout")
+def logout(
     request: Request,
-    username: str = Form(...),
-    password: str = Form(...)
+    csrf_token: str = Form(...)
 ):
-    with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute("""
-                SELECT
-                    id,
-                    username,
-                    password_hash,
-                    is_admin
-                FROM users
-                WHERE username = %s;
-            """, (username,))
-
-            user = cur.fetchone()
-
-    if user is None:
-        return templates.TemplateResponse(
-            request=request,
-            name="login.html",
-            context={
-                "error": "Invalid username or password",
-                "current_user": None
-            }
-        )
-
-    try:
-        password_hasher.verify(
-            user["password_hash"],
-            password
-        )
-
-    except (VerifyMismatchError, InvalidHashError):
-        return templates.TemplateResponse(
-            request=request,
-            name="login.html",
-            context={
-                "error": "Invalid username or password",
-                "current_user": None
-            }
-        )
-
-
-    request.session["user_id"] = user["id"]
-
-    return RedirectResponse(
-        url="/levels",
-        status_code=303
+    verify_csrf_token(
+        request,
+        csrf_token
     )
 
-
-@app.get("/logout")
-def logout(request: Request):
     request.session.clear()
-
-    return RedirectResponse(
-        url="/login",
-        status_code=303
-    )
-
-
-@app.get("/register")
-def register_page(request: Request):
-    current_user = get_current_user(request)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="register.html",
-        context={
-            "error": None,
-            "current_user": current_user
-        }
-    )
-
-
-@app.post("/register")
-def register(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    confirm_password: str = Form(...)
-):
-    current_user = get_current_user(request)
-
-    if password != confirm_password:
-        return templates.TemplateResponse(
-            request=request,
-            name="register.html",
-            context={
-                "error": "Passwords do not match",
-                "current_user": current_user
-            }
-        )
-
-    with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-
-            cur.execute("""
-                SELECT id
-                FROM users
-                WHERE username = %s;
-            """, (username,))
-
-            existing_user = cur.fetchone()
-
-            if existing_user:
-                return templates.TemplateResponse(
-                    request=request,
-                    name="register.html",
-                    context={
-                        "error": "Username already exists",
-                        "current_user": current_user
-                    }
-                )
-
-            hashed_password = password_hasher.hash(password)
-
-            cur.execute("""
-                INSERT INTO users (
-                    username,
-                    password_hash
-                )
-                VALUES (%s, %s);
-            """, (
-                username,
-                hashed_password
-            ))
 
     return RedirectResponse(
         url="/login",
@@ -543,7 +539,9 @@ def leaderboard_page(request: Request):
 def submit_completion(
     request: Request,
     level_id: int,
-    proof_url: str = Form(...)
+    background_tasks:BackgroundTasks,
+    proof_url: str = Form(...),
+    csrf_token: str = Form(...)
 ):
     current_user = get_current_user(request)
 
@@ -553,8 +551,27 @@ def submit_completion(
             status_code=303
         )
 
+    verify_csrf_token(request, csrf_token)
+    proof_url = validate_proof_url(proof_url)
+
     with get_connection() as conn:
         with conn.cursor() as cur:
+
+            # check the level exists
+            cur.execute("""
+                SELECT 1
+                FROM levels
+                WHERE id = %s
+                AND active = TRUE;
+            """, (level_id,))
+
+            level_exists = cur.fetchone() is not None
+
+            if not level_exists:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Active level not found"
+                )
 
             # check whether the user has already completed this level
             cur.execute("""
@@ -611,7 +628,7 @@ def submit_completion(
                 proof_url
             ))
 
-            # i
+    background_tasks.add_task(send_new_submission)
 
     request.session["flash_message"] = (
         "Submission sent successfully!"
@@ -627,6 +644,7 @@ def submit_completion(
 def level_page(request: Request, level_id: int):
 
     current_user = get_current_user(request)
+    csrf_token = get_csrf_token(request)
 
     flash_message = request.session.pop(
         "flash_message",
@@ -732,7 +750,7 @@ def level_page(request: Request, level_id: int):
     if video_id:
 
         level["embed_url"] = (
-            f"https://www.youtube.com/embed/{video_id}"
+            f"https://www.youtube-nocookie.com/embed/{video_id}"
         )
 
     else:
@@ -749,9 +767,12 @@ def level_page(request: Request, level_id: int):
             "flash_message": flash_message,
             "victors": victors,
             "user_completion": user_completion,
-            "pending_submission": pending_submission
+            "pending_submission": pending_submission,
+            "csrf_token": csrf_token
         }
     )
+
+
 
 
 @app.get("/admin")
@@ -768,10 +789,22 @@ def admin_page(
 
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
+
+            # get number of pending submissions
+            cur.execute("""
+                SELECT COUNT(*) AS pending_count
+                FROM submissions
+                WHERE status = 'pending';
+            """)
+
+            pending_count = cur.fetchone()["pending_count"]
+
+
             # list admin users
             cur.execute("""
-                SELECT username, levels_reviewed FROM users
-                WHERE is_admin = TRUE;                   
+                SELECT username, levels_reviewed
+                FROM users
+                WHERE is_admin = TRUE;
             """)
 
             site_admin = cur.fetchall()
@@ -838,7 +871,8 @@ def admin_page(
             "review_history": review_history,
             "history_page": history_page,
             "total_pages": total_pages,
-            "total_reviews": total_reviews
+            "total_reviews": total_reviews,
+            "pending_count": pending_count
         }
     )
 
@@ -893,9 +927,11 @@ def admin_submissions(request: Request):
 @app.get("/admin/submissions/{submission_id}/approve")
 def approve_submission(
     request: Request,
-    submission_id: int):
+    submission_id: int
+    ):
 
     current_user = require_admin(request)
+    csrf_token = get_csrf_token(request)
 
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -936,7 +972,8 @@ def approve_submission(
         name="admin-approve.html",
         context={
             "current_user": current_user,
-            "submission": submission
+            "submission": submission,
+            "csrf_token": csrf_token
         }
     )
 
@@ -946,10 +983,12 @@ def process_approval(
     request: Request,
     submission_id: int,
     background_tasks: BackgroundTasks,
-    moderator_comment: str = Form(...)
+    moderator_comment: str = Form(...),
+    csrf_token: str = Form(...)
     ):
 
     current_user = require_admin(request)
+    verify_csrf_token(request, csrf_token)
 
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -1054,6 +1093,7 @@ def deny_submission(
     submission_id: int):
 
     current_user = require_admin(request)
+    csrf_token = get_csrf_token(request)
 
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -1094,7 +1134,8 @@ def deny_submission(
         name="admin-deny.html",
         context={
             "current_user": current_user,
-            "submission": submission
+            "submission": submission,
+            "csrf_token": csrf_token
         }
     )
 
@@ -1104,9 +1145,11 @@ def process_denial(
     request: Request,
     submission_id: int,
     background_tasks: BackgroundTasks,
-    moderator_comment: str = Form(...)):
+    moderator_comment: str = Form(...),
+    csrf_token: str = Form(...)):
 
     current_user = require_admin(request)
+    verify_csrf_token(request, csrf_token)
 
     with get_connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -1186,6 +1229,379 @@ def process_denial(
         )
 
 
+@app.get("/admin/levels")
+def admin_levels(request: Request):
+    current_user = require_admin(request)
+    csrf_token = get_csrf_token(request)
+
+    with get_connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+
+            cur.execute("""
+                SELECT
+                    id,
+                    name,
+                    creator,
+                    rank
+                FROM levels
+                WHERE active = TRUE
+                ORDER BY rank;
+            """)
+
+            levels = cur.fetchall()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin-levels.html",
+        context={
+            "current_user": current_user,
+            "levels": levels,
+            "csrf_token": csrf_token
+        }
+    )
+
+
+@app.get("/admin/levels/add")
+def admin_add_level(request: Request):
+    current_user = require_admin(request)
+    csrf_token = get_csrf_token(request)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin-add-level.html",
+        context={
+            "current_user": current_user,
+            "csrf_token": csrf_token
+        }
+    )
+
+
+@app.post("/admin/levels/add")
+def process_addition(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    csrf_token: str = Form(...),
+    name: str = Form(...),
+    gd_id: int = Form(...),
+    creator: str = Form(...),
+    rank: int = Form(...),
+    verification_url: str = Form(...)
+):
+    current_user = require_admin(request)
+
+    verify_csrf_token(
+        request,
+        csrf_token
+    )
+
+    name, creator = validate_new_level(
+        name,
+        creator,
+        gd_id,
+        rank
+    )
+
+    verification_url = validate_proof_url(
+        verification_url
+    )
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+
+                # get current number of active levels
+                cur.execute("""
+                    SELECT COUNT(*) AS count
+                    FROM levels
+                    WHERE active = TRUE;
+                """)
+
+                level_count = cur.fetchone()["count"]
+
+                if rank > level_count + 1:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Rank must be between 1 and {level_count + 1}"
+                    )
+
+                # make space for the new level
+                cur.execute("""
+                    UPDATE levels
+                    SET rank = rank + 1
+                    WHERE active = TRUE
+                    AND rank >= %s;
+                """, (rank,))
+
+                # add the new level
+                cur.execute("""
+                    INSERT INTO levels (
+                        name,
+                        gd_id,
+                        creator,
+                        rank,
+                        verification_url
+                    )
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id;
+                """, (
+                    name,
+                    gd_id,
+                    creator,
+                    rank,
+                    verification_url
+                ))
+
+                new_level = cur.fetchone()
+
+                # recalculate WP for the whole list
+                recalculate_waffle_points(cur)
+
+                # update changelog
+                changes = [
+                    {
+                        "type": "level_added",
+                        "level_id": new_level["id"],
+                        "level_name": name,
+                        "rank": rank
+                    }
+                ]
+
+                cur.execute("""
+                    INSERT INTO changelog (
+                        admin_id,
+                        changes
+                    )
+                    VALUES (%s, %s);
+                """, (
+                    current_user["id"],
+                    Jsonb(changes)
+                ))
+
+    except UniqueViolation:
+        raise HTTPException(
+            status_code=409,
+            detail="A level with that Geometry Dash ID already exists"
+        )
+
+    background_tasks.add_task(
+        send_new_placement,
+        name,
+        rank,
+        verification_url
+    )
+
+    return RedirectResponse(
+        url=f"/levels/{new_level['id']}",
+        status_code=303
+    )
+
+
+@app.post("/admin/levels/reorder")
+def reorder_levels(
+    request: Request,
+    ranking: RankingUpdate,
+    background_tasks: BackgroundTasks
+):
+    current_user = require_admin(request)
+
+    verify_csrf_token(
+        request,
+        ranking.csrf_token
+    )
+
+    if not ranking.level_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="Ranking cannot be empty"
+        )
+
+    if len(ranking.level_ids) != len(set(ranking.level_ids)):
+        raise HTTPException(
+            status_code=400,
+            detail="Duplicate level IDs in ranking"
+        )
+
+    with get_connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+
+            # get the current active ranking
+            cur.execute("""
+                SELECT
+                    id,
+                    name,
+                    rank
+                FROM levels
+                WHERE active = TRUE
+                ORDER BY rank;
+            """)
+
+            current_levels = cur.fetchall()
+
+            current_ids = [
+                level["id"]
+                for level in current_levels
+            ]
+
+            # make sure submitted ranking matches active levels
+            if (
+                len(ranking.level_ids) != len(current_ids)
+                or set(ranking.level_ids) != set(current_ids)
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Submitted ranking does not match active levels"
+                )
+
+            # remember the old ranking before changing anything
+            old_ranks = {
+                level["id"]: level["rank"]
+                for level in current_levels
+            }
+
+            level_names = {
+                level["id"]: level["name"]
+                for level in current_levels
+            }
+
+            # update the ranking
+            for new_rank, level_id in enumerate(
+                ranking.level_ids,
+                start=1
+            ):
+                cur.execute("""
+                    UPDATE levels
+                    SET rank = %s
+                    WHERE id = %s
+                    AND active = TRUE;
+                """, (
+                    new_rank,
+                    level_id
+                ))
+
+            # recalculate waffle points for the new ranking
+            recalculate_waffle_points(cur)
+
+            # build the changelog
+            changes = []
+
+            for new_rank, level_id in enumerate(
+                ranking.level_ids,
+                start=1
+            ):
+                old_rank = old_ranks[level_id]
+
+                if old_rank != new_rank:
+                    changes.append({
+                        "level_id": level_id,
+                        "level_name": level_names[level_id],
+                        "old_rank": old_rank,
+                        "new_rank": new_rank
+                    })
+
+            # save the changelog as part of the same transaction
+            if changes:
+                cur.execute("""
+                    INSERT INTO changelog (
+                        admin_id,
+                        changes
+                    )
+                    VALUES (%s, %s);
+                """, (
+                    current_user["id"],
+                    Jsonb(changes)
+                ))
+
+    # only tell discord once the DB transaction succeeded
+    if changes:
+        background_tasks.add_task(
+            send_ranking_changelog,
+            changes
+        )
+
+    return {
+        "status": "ok",
+        "changes": changes
+    }
+
+
+
+
+@app.get("/privacy")
+def privacy_policy(request: Request):
+
+    current_user = get_current_user(request)
+
+    markdown_text = (
+        BASE_DIR / "legal" / "privacy.md"
+    ).read_text(encoding="utf-8")
+
+    legal_html = markdown.markdown(
+        markdown_text,
+        extensions=["extra"]
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="legal.html",
+        context={
+            "current_user": current_user,
+            "page_title": "Privacy Policy",
+            "legal_html": legal_html
+        }
+    )
+
+
+@app.get("/terms")
+def terms_of_service(request: Request):
+
+    current_user = get_current_user(request)
+
+    markdown_text = (
+        BASE_DIR / "legal" / "terms.md"
+    ).read_text(encoding="utf-8")
+
+    legal_html = markdown.markdown(
+        markdown_text,
+        extensions=["extra"]
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="legal.html",
+        context={
+            "current_user": current_user,
+            "page_title": "Terms of Service",
+            "legal_html": legal_html
+        }
+    )
+
+
+@app.get("/rules")
+def submission_rules(request: Request):
+
+    current_user = get_current_user(request)
+
+    markdown_text = (
+        BASE_DIR / "legal" / "rules.md"
+    ).read_text(encoding="utf-8")
+
+
+    legal_html = markdown.markdown(
+        markdown_text,
+        extensions=["extra"]
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="legal.html",
+        context={
+            "current_user": current_user,
+            "page_title": "Rules of Submission",
+            "legal_html": legal_html
+        }
+    )
+
+
 
 
 @app.get("/login/discord")
@@ -1253,13 +1669,12 @@ async def discord_callback(request: Request):
                 cur.execute("""
                     INSERT INTO users (
                         username,
-                        password_hash,
                         discord_id,
                         discord_username,
                         discord_display_name,
                         discord_avatar_hash
                     )
-                    VALUES (%s, NULL, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s)
                     RETURNING
                         id,
                         username,
@@ -1298,18 +1713,4 @@ async def discord_callback(request: Request):
     return RedirectResponse(
         url="/levels",
         status_code=303
-    )
-
-
-if __name__ == "__main__":
-    host = "localhost"
-    port = 8000
-
-    print(f"http://{host}:{port}/levels")
-
-    uvicorn.run(
-        "main:app",
-        host=host,
-        port=port,
-        reload=True
     )

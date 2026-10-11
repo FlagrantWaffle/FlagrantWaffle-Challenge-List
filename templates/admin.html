@@ -8,19 +8,17 @@ Admin Dashboard - FlagrantWaffle
 
 <main class="page-container">
 
-    <section class="admin-header">
+    <section class="profile-header admin-submissions-header">
 
-        <div>
+        <p class="eyebrow">
+            Administration
+        </p>
 
-            <p class="eyebrow">
-                Administration
-            </p>
+        <div class="admin-submissions-header-row">
 
             <h1 class="profile-username">
                 Admin Dashboard
             </h1>
-
-        </div>
 
 
         <div class="admin-actions">
@@ -32,12 +30,44 @@ Admin Dashboard - FlagrantWaffle
                 Review Submissions
             </a>
 
+            <a
+                href="/admin/levels"
+                class="primary-button"
+            >
+                Edit Levels
+            </a>
+            
+            <a
+                href="/admin/levels/add"
+                class="primary-button"
+            >
+                Add Level
+            </a>
+
+        </div>
+
+        
+            <div class="profile-stats">
+
+                <div class="profile-stat">
+
+                    <span class="profile-stat-value">
+                        {{ pending_count }}
+                    </span>
+
+                    <span class="profile-stat-label">
+                        Pending Review
+                    </span>
+
+                </div>
+
+            </div>
+
         </div>
 
     </section>
 
-
-    <section class="levels-card">
+    <section class="levels-card submissions-card">
 
         <div class="levels-card-header">
 
