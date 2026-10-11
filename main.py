@@ -15,14 +15,13 @@ from ranking import recalculate_waffle_points
 from validation import validate_proof_url, validate_new_level
 
 from discord_oauth import oauth
-from discord_bot import send_review_verdict, send_ranking_changelog, send_new_placement
+from discord_bot import send_review_verdict, send_ranking_changelog, send_new_placement, send_new_submission
 
 from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 import os
-import uvicorn
 from pathlib import Path
 import markdown
 import hashlib
@@ -93,11 +92,7 @@ templates = Jinja2Templates(
 )
 
 css_path = BASE_DIR / "static" / "css" / "styles.css"
-
-css_version = hashlib.sha256(
-    css_path.read_bytes()
-).hexdigest()[:8]
-
+css_version = hashlib.sha256(css_path.read_bytes()).hexdigest()[:8]
 templates.env.globals["css_version"] = css_version
 
 app.mount(
@@ -154,7 +149,6 @@ class RankingUpdate(BaseModel):
     csrf_token: str
 
 
-
 # ------------------------------------------
 # ENDPOINTS
 # ------------------------------------------
@@ -198,6 +192,8 @@ def health(request: Request):
             ZoneInfo("Europe/London")
         ).strftime("%Y-%m-%d %H:%M:%S %Z")
     }
+
+
 
 
 @app.get("/")
@@ -543,6 +539,7 @@ def leaderboard_page(request: Request):
 def submit_completion(
     request: Request,
     level_id: int,
+    background_tasks:BackgroundTasks,
     proof_url: str = Form(...),
     csrf_token: str = Form(...)
 ):
@@ -631,6 +628,7 @@ def submit_completion(
                 proof_url
             ))
 
+    background_tasks.add_task(send_new_submission)
 
     request.session["flash_message"] = (
         "Submission sent successfully!"
@@ -773,6 +771,8 @@ def level_page(request: Request, level_id: int):
             "csrf_token": csrf_token
         }
     )
+
+
 
 
 @app.get("/admin")
@@ -1524,6 +1524,8 @@ def reorder_levels(
     }
 
 
+
+
 @app.get("/privacy")
 def privacy_policy(request: Request):
 
@@ -1711,18 +1713,4 @@ async def discord_callback(request: Request):
     return RedirectResponse(
         url="/levels",
         status_code=303
-    )
-
-
-if __name__ == "__main__":
-    host = "localhost"
-    port = 8000
-
-    print(f"http://{host}:{port}/levels")
-
-    uvicorn.run(
-        "main:app",
-        host=host,
-        port=port,
-        reload=True
     )

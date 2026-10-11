@@ -10,6 +10,7 @@ load_dotenv()
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 DISCORD_REVIEW_CHANNEL_ID = os.getenv("DISCORD_REVIEW_CHANNEL_ID")
 DISCORD_CHANGELOG_CHANNEL_ID = os.getenv("DISCORD_CHANGELOG_CHANNEL_ID")
+DISCORD_SUBMISSION_NOTIFS_ID = os.getenv("DISCORD_SUBMISSION_NOTIFS_ID")
 
 async def send_discord_message(content: str):
 
@@ -202,3 +203,42 @@ async def send_new_placement(
         )
 
         response.raise_for_status()
+
+
+async def send_new_submission():
+    url = (
+        f"https://discord.com/api/v10/channels/"
+        f"{DISCORD_SUBMISSION_NOTIFS_ID}/messages"
+    )
+
+    headers = {
+        "Authorization": f"Bot {DISCORD_BOT_TOKEN}"
+    }
+
+    description = (
+        "Hello team :)\n\nA new submission has been made. \n\nhttps://flagrantwaffle.com/admin/submissions"
+    )
+
+    data = {
+        "content": "@here",
+        "allowed_mentions": {
+            "parse": ["everyone"]
+        },
+        "embeds": [
+            {
+                "title": "New Submission",
+                "description": description,
+                "color": 0x3B98D3
+            }
+        ]
+    }
+
+    async with httpx.AsyncClient() as client:
+
+        response = await client.post(
+            url,
+            headers=headers,
+            json=data
+        )
+
+    response.raise_for_status()
