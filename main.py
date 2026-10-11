@@ -1395,6 +1395,7 @@ def process_addition(
         status_code=303
     )
 
+
 @app.post("/admin/levels/reorder")
 def reorder_levels(
     request: Request,
@@ -1522,6 +1523,7 @@ def reorder_levels(
         "changes": changes
     }
 
+
 @app.get("/privacy")
 def privacy_policy(request: Request):
 
@@ -1596,7 +1598,6 @@ def submission_rules(request: Request):
             "legal_html": legal_html
         }
     )
-
 
 
 
