@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS completions (
     FOREIGN KEY (submission_id) REFERENCES submissions(id),
 
     UNIQUE (user_id, level_id)
-)
+);
 
 
 CREATE TABLE IF NOT EXISTS CHANGELOG (
