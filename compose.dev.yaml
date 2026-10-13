@@ -1,0 +1,5 @@
+services:
+  app:
+    environment:
+      SESSION_HTTPS_ONLY: "false"
+      DISCORD_REDIRECT_URI: http://localhost:8080/auth/discord/callback
