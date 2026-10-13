@@ -32,7 +32,7 @@ Approve Submission - FlagrantWaffle
                 </span>
 
                 <span class="level-stat-value">
-                    {{ submission.username }}
+                    {{ submission.discord_display_name or submission.discord_username or submission.username }}
                 </span>
 
             </div>

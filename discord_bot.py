@@ -41,7 +41,7 @@ async def send_discord_message(content: str):
 
 async def send_review_verdict(
     discord_id: str,
-    username: str,
+    display_name: str,
     level_name: str,
     approved: bool,
     moderator_comment: str,
@@ -72,7 +72,7 @@ async def send_review_verdict(
                 "fields": [
                     {
                         "name": "User",
-                        "value": username,
+                        "value": display_name,
                         "inline": True
                     },
                     {

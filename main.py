@@ -210,7 +210,10 @@ def root(request: Request):
                 submissions.proof_url,
                 submissions.moderator_comment,
                 submissions.reviewed_at,
+
                 submitter.username AS submitter_username,
+                submitter.discord_username AS submitter_discord_username,
+                submitter.discord_display_name AS submitter_discord_display_name,
 
                 levels.name AS level_name,
                 levels.id AS level_id
@@ -505,6 +508,8 @@ def leaderboard_page(request: Request):
                 SELECT
                     users.id,
                     users.username,
+                    users.discord_username,
+                    users.discord_display_name,
                     COALESCE(SUM(levels.points), 0) AS waffle_points
                 FROM users
 
@@ -516,7 +521,9 @@ def leaderboard_page(request: Request):
 
                 GROUP BY
                     users.id,
-                    users.username
+                    users.username,
+                    users.discord_username,
+                    users.discord_display_name
 
                 ORDER BY
                     waffle_points DESC,
@@ -703,6 +710,8 @@ def level_page(request: Request, level_id: int):
                 SELECT
                     users.id,
                     users.username,
+                    users.discord_username,
+                    users.discord_display_name,
                     completions.completed_at,
                     completions.proof_url
                 FROM completions
@@ -802,7 +811,11 @@ def admin_page(
 
             # list admin users
             cur.execute("""
-                SELECT username, levels_reviewed
+                SELECT
+                    username,
+                    discord_username,
+                    discord_display_name,
+                    levels_reviewed
                 FROM users
                 WHERE is_admin = TRUE;
             """)
@@ -835,11 +848,15 @@ def admin_page(
                     submissions.reviewed_at,
 
                     submitter.username AS submitter_username,
+                    submitter.discord_username AS submitter_discord_username,
+                    submitter.discord_display_name AS submitter_discord_display_name,
 
                     levels.id AS level_id,
                     levels.name AS level_name,
 
-                    reviewer.username AS reviewer_username
+                    reviewer.username AS reviewer_username,
+                    reviewer.discord_username AS reviewer_discord_username,
+                    reviewer.discord_display_name AS reviewer_discord_display_name
 
                 FROM submissions
 
@@ -893,6 +910,8 @@ def admin_submissions(request: Request):
 
                     users.id AS user_id,
                     users.username,
+                    users.discord_username,
+                    users.discord_display_name,
 
                     levels.id AS level_id,
                     levels.name AS level_name,
@@ -943,6 +962,8 @@ def approve_submission(
                     submissions.status,
 
                     users.username,
+                    users.discord_username,
+                    users.discord_display_name,
 
                     levels.id AS level_id,
                     levels.name AS level_name
@@ -1002,6 +1023,8 @@ def process_approval(
                     submissions.submitted_at,
 
                     users.username,
+                    users.discord_username,
+                    users.discord_display_name,
                     users.discord_id,
 
                     levels.name AS level_name
@@ -1028,16 +1051,21 @@ def process_approval(
 
             if submission["discord_id"]:
 
+                display_name = (
+                    submission["discord_display_name"]
+                    or submission["discord_username"]
+                    or submission["username"]
+                )
+
                 background_tasks.add_task(
                     send_review_verdict,
                     discord_id=submission["discord_id"],
-                    username=submission["username"],
+                    display_name=display_name,
                     level_name=submission["level_name"],
                     approved=True,
                     moderator_comment=moderator_comment,
                     proof_url=submission["proof_url"]
                 )
-
 
             # mark the submission as approved
             cur.execute("""
@@ -1105,6 +1133,8 @@ def deny_submission(
                     submissions.status,
 
                     users.username,
+                    users.discord_username,
+                    users.discord_display_name,
 
                     levels.id AS level_id,
                     levels.name AS level_name
@@ -1163,6 +1193,8 @@ def process_denial(
                     submissions.submitted_at,
 
                     users.username,
+                    users.discord_username,
+                    users.discord_display_name,
                     users.discord_id,
 
                     levels.name AS level_name
@@ -1189,12 +1221,18 @@ def process_denial(
 
             if submission["discord_id"]:
 
+                display_name = (
+                    submission["discord_display_name"]
+                    or submission["discord_username"]
+                    or submission["username"]
+                )
+
                 background_tasks.add_task(
                     send_review_verdict,
                     discord_id=submission["discord_id"],
-                    username=submission["username"],
+                    display_name=display_name,
                     level_name=submission["level_name"],
-                    approved=False,
+                    approved=True,
                     moderator_comment=moderator_comment,
                     proof_url=submission["proof_url"]
                 )
