@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-{{ user_info.username }} - FlagrantWaffle
+{{ user_info.discord_display_name or user_info.discord_username or user_info.username }} - FlagrantWaffle
 {% endblock %}
 
 {% block content %}
@@ -18,7 +18,7 @@
                 </div>
 
                 <h1 class="profile-username">
-                    {{ user_info.username }}
+                    {{ user_info.discord_display_name or user_info.discord_username or user_info.username }}
                 </h1>
             </div>
 
@@ -27,7 +27,7 @@
                 <img
                     class="profile-avatar"
                     src="https://cdn.discordapp.com/avatars/{{ user_info.discord_id }}/{{ user_info.discord_avatar_hash }}.png?size=256"
-                    alt="{{ user_info.username }}'s profile picture"
+                    alt="{{ user_info.discord_display_name or user_info.discord_username or user_info.username }}'s profile picture"
                 >
 
             {% endif %}
@@ -366,6 +366,7 @@
                                         {% endif %}
 
                                     </td>
+
 
                                     <td class="muted-cell">
 

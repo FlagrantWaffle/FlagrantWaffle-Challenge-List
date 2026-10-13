@@ -49,7 +49,7 @@ Waffle Leaderboard
 
                         <td class="leaderboard-user">
                             <a href="{{ request.url_for('user_profile', username=user.username) }}">
-                                {{ user.username }}
+                                {{ user.discord_display_name or user.discord_username or user.username }}
                             </a>
                         </td>
                         

@@ -104,7 +104,7 @@ Index Dashboard - FlagrantWaffle
 
                             <td class="level-name-cell">
                                 <a href="/users/{{ review.submitter_username }}">
-                                    {{ review.submitter_username }}
+                                    {{ review.submitter_discord_display_name or review.submitter_discord_username or review.submitter_username }}
                                 </a>
                             </td>
 

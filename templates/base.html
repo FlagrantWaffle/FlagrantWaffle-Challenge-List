@@ -6,6 +6,7 @@
 
     <title>{% block title %}FlagrantWaffle{% endblock %}</title>
 
+    <link rel="icon" type="image/png" href="/static/images/waffle_icon.png">
     <link rel="stylesheet" href="/static/css/styles.css?v={{ css_version }}">
 </head>
 
@@ -39,7 +40,7 @@
 
     {% if current_user %}
         <a href="/users/{{ current_user.username }}">
-            {{ current_user.username }}
+            {{ current_user.discord_display_name or current_user.discord_username or current_user.username }}
         </a>
 
         <form method="post" action="/logout" class="nav-logout-form">

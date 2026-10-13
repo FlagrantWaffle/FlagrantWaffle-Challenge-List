@@ -108,7 +108,7 @@ Challenge Submissions - FlagrantWaffle
                                 href="/users/{{ submission.username }}"
                                 class="proof-link"
                             >
-                                {{ submission.username }}
+                                {{ submission.discord_display_name or submission.discord_username or submission.username }}
                             </a>
                         </td>
 

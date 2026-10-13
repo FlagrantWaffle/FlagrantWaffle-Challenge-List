@@ -111,7 +111,7 @@ Admin Dashboard - FlagrantWaffle
                         <td class="level-name-cell">
 
                             <a href="/users/{{ admin.username }}">
-                                {{ admin.username }}
+                                {{ admin.discord_display_name or admin.discord_username or admin.username }}
                             </a>
 
                         </td>
@@ -193,7 +193,7 @@ Admin Dashboard - FlagrantWaffle
 
                         <td class="level-name-cell">
                             <a href="/users/{{ review.submitter_username }}">
-                                {{ review.submitter_username }}
+                                {{ review.submitter_discord_display_name or review.submitter_discord_username or review.submitter_username }}
                             </a>
                         </td>
 
@@ -207,7 +207,7 @@ Admin Dashboard - FlagrantWaffle
 
                         <td class="level-name-cell">
                             <a href="/users/{{ review.reviewer_username }}">
-                                {{ review.reviewer_username }}
+                                {{ review.submitter_discord_display_name or review.submitter_discord_username or review.submitter_username }}
                             </a>
                         </td>
 
