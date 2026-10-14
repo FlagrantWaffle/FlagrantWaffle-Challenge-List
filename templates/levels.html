@@ -65,7 +65,7 @@ Waffle Challenge Levels
 
                         <td class="leaderboard-user">
                             <a href="{{ request.url_for('user_profile', username=level.creator|lower) }}">
-                                {{ level.creator }}
+                                {{ level.creator_discord_display_name or level.creator_discord_username or level.creator }}
                             </a>
                         </td>
 

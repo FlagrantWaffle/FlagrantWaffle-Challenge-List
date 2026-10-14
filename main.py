@@ -440,6 +440,9 @@ def get_levels(request: Request):
                     levels.rank,
                     levels.points,
 
+                    creator_user.discord_username AS creator_discord_username,
+                    creator_user.discord_display_name AS creator_discord_display_name,
+
                     EXISTS (
                         SELECT 1
                         FROM completions
@@ -448,6 +451,9 @@ def get_levels(request: Request):
                     ) AS completed
 
                 FROM levels
+
+                LEFT JOIN users AS creator_user
+                    ON LOWER(creator_user.username) = LOWER(levels.creator)
 
                 WHERE levels.active = TRUE
 
