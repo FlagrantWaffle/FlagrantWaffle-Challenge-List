@@ -11,7 +11,7 @@ pipeline {
         stage("confirm") {
             steps {
                 sh 'echo "checked out successfully"'
-                sh 'ls-la'
+                sh 'ls -la'
             }
         }
     }
