@@ -35,6 +35,15 @@ pipeline {
                 sh 'docker build -t fwcl-ci:$BUILD_NUMBER .'
             }
         }
+        
+
+        stage("endpoint tests") {
+            steps {
+                sh '.venv/bin/python -m pytest -v tests/test_endpoints.py'
+            }
+        }
+
+
     }
 
 
