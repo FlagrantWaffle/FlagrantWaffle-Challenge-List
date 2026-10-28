@@ -1,11 +1,8 @@
 import os
-
-os.environ.setdefault("SESSION_SECRET", "test-secret")
-
+import main
 from fastapi.testclient import TestClient
 
-import main
-
+os.environ.setdefault("SESSION_SECRET", "test-secret")
 
 client = TestClient(
     main.app,
