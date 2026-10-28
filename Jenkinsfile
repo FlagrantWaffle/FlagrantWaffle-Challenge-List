@@ -28,5 +28,19 @@ pipeline {
                 sh ".venv/bin/python -m pytest -v"
             }
         }
+
+
+        stage("docker build") {
+            steps {
+                sh 'docker build -t fwcl-ci-test .'
+            }
+        }
+
+
+        stage("docker build") {
+            steps {
+                sh 'docker build -t fwcl-ci:$BUILD_NUMBER .'
+            }
+        }
     }
 }
