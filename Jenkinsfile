@@ -9,13 +9,11 @@ pipeline {
             }
         }
 
-
         stage("python compile check") {
             steps {
                 sh 'python3 -m compileall -q .'
             }
         }
-
 
         stage("dependancies check") {
             steps {
@@ -25,10 +23,10 @@ pipeline {
             }
         }
 
-
         stage("unit tests") {
             steps {
                 sh ".venv/bin/python -m pytest -v"
             }
         }
+    }
 }
