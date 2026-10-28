@@ -36,4 +36,11 @@ pipeline {
             }
         }
     }
+
+
+    post {
+        always {
+            sh 'docker image rm -f fwcl-ci:$BUILD_NUMBER || true'
+        }
+    }
 }
